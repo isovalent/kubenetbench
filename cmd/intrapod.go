@@ -15,10 +15,10 @@ type netperfConf struct {
 	dataPort uint16
 }
 
-type Ctx struct {
-	netperf_cnf netperfConf
-	runctx      *RunCtx
-	policy      string
+type state struct {
+	NetperfCnf netperfConf
+	runctx     *runCtx
+	policy     string
 }
 
 var policyArg string
@@ -31,8 +31,8 @@ var intrapodCmd = &cobra.Command{
 			log.Fatal("invalid policy: ", policyArg)
 		}
 
-		ctx := Ctx{
-			netperf_cnf: netperfConf{
+		ctx := state{
+			NetperfCnf: netperfConf{
 				timeout:  10,
 				dataPort: 8000,
 				// ctl_port:  12865,
@@ -51,9 +51,9 @@ func init() {
 var srvYamlTemplate = template.Must(template.New("srv").Parse(`apiVersion: v1
 kind: Pod
 metadata:
-  name: netperf-{{.runId}}-srv
+  name: netperf-{{.runID}}-srv
   labels : {
-    runid: {{.runId}},
+    runid: {{.runID}},
     role: srv,
   }
 spec:
@@ -65,13 +65,13 @@ spec:
     args: ["-D"]
 `))
 
-func (c *Ctx) genSrvYaml() string {
+func (s *state) genSrvYaml() string {
 	m := map[string]interface{}{
-		"runId": c.runctx.id,
+		"runID": s.runctx.id,
 	}
 
-	yaml := fmt.Sprintf("%s/netserv.yaml", c.runctx.dir)
-	if !c.runctx.quiet {
+	yaml := fmt.Sprintf("%s/netserv.yaml", s.runctx.dir)
+	if !s.runctx.quiet {
 		log.Printf("Generating %s", yaml)
 	}
 	f, err := os.Create(yaml)
@@ -86,9 +86,9 @@ func (c *Ctx) genSrvYaml() string {
 var cliYamlTemplate = template.Must(template.New("cli").Parse(`apiVersion: v1
 kind: Pod
 metadata:
-  name: netperf-{{.runId}}-cli
+  name: netperf-{{.runID}}-cli
   labels : {
-     runid: {{.runId}},
+     runid: {{.runID}},
      role: cli,
   }
 spec:
@@ -100,7 +100,7 @@ spec:
     args: [
         "-l", "{{.timeout}}",     # timeout
         "-j",                     # enable additional statistics
-        "-H", "{{.serverIp}}",    # server IP
+        "-H", "{{.serverIP}}",    # server IP
         "-t", "tcp_rr",           # test name
         "--",                     # test specific arguemnts
         "-P", "{{.dataPort}}",    # data connection port
@@ -109,16 +109,16 @@ spec:
     ]
 `))
 
-func (c *Ctx) genCliYaml(serverIp string) string {
+func (s *state) genCliYaml(serverIP string) string {
 	m := map[string]interface{}{
-		"runId":    c.runctx.id,
-		"timeout":  c.netperf_cnf.timeout,
-		"serverIp": serverIp,
-		"dataPort": c.netperf_cnf.dataPort,
+		"runID":    s.runctx.id,
+		"timeout":  s.NetperfCnf.timeout,
+		"serverIP": serverIP,
+		"dataPort": s.NetperfCnf.dataPort,
 	}
 
-	yaml := fmt.Sprintf("%s/client.yaml", c.runctx.dir)
-	if !c.runctx.quiet {
+	yaml := fmt.Sprintf("%s/client.yaml", s.runctx.dir)
+	if !s.runctx.quiet {
 		log.Printf("Generating %s", yaml)
 	}
 	f, err := os.Create(yaml)
@@ -133,9 +133,9 @@ func (c *Ctx) genCliYaml(serverIp string) string {
 var portPolicyYamlTemplate = template.Must(template.New("policy").Parse(`apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: netperf-{{.runId}}-policy
+  name: netperf-{{.runID}}-policy
   labels : {
-     "runid": {{.runId}},
+     "runid": {{.runID}},
   }
 spec:
   podSelector:
@@ -154,14 +154,14 @@ spec:
       port: {{.dataPort}}
 `))
 
-func (c *Ctx) genPortPolicyYaml() string {
+func (s *state) genPortPolicyYaml() string {
 	m := map[string]interface{}{
-		"runId":    c.runctx.id,
-		"dataPort": c.netperf_cnf.dataPort,
+		"runID":    s.runctx.id,
+		"dataPort": s.NetperfCnf.dataPort,
 	}
 
-	yaml := fmt.Sprintf("%s/port-policy.yaml", c.runctx.dir)
-	if !c.runctx.quiet {
+	yaml := fmt.Sprintf("%s/port-policy.yaml", s.runctx.dir)
+	if !s.runctx.quiet {
 		log.Printf("Generating %s", yaml)
 	}
 	f, err := os.Create(yaml)
@@ -173,45 +173,45 @@ func (c *Ctx) genPortPolicyYaml() string {
 	return yaml
 }
 
-func (c Ctx) execute() {
+func (s state) execute() {
 	// start netperf server (netserver)
-	srvYaml := c.genSrvYaml()
+	srvYaml := s.genSrvYaml()
 	srvCmd := fmt.Sprintf("kubectl apply -f %s", srvYaml)
-	c.runctx.ExecCmd(srvCmd)
+	s.runctx.ExecCmd(srvCmd)
 
 	defer func() {
 		// FIXME: this does not work if there is an error and we exit()
-		delPodsCmd := fmt.Sprintf("kubectl delete pod,networkpolicy -l \"runid=%s\"", c.runctx.id)
-		c.runctx.ExecCmd(delPodsCmd)
+		delPodsCmd := fmt.Sprintf("kubectl delete pod,networkpolicy -l \"runid=%s\"", s.runctx.id)
+		s.runctx.ExecCmd(delPodsCmd)
 	}()
 
 	// get its IP
-	srvSelector := fmt.Sprintf("runid=%s,role=srv", c.runctx.id)
+	srvSelector := fmt.Sprintf("runid=%s,role=srv", s.runctx.id)
 	time.Sleep(2 * time.Second)
-	srvIp := c.runctx.KubeGetIP(srvSelector, 10, 2*time.Second)
-	if !c.runctx.quiet {
-		log.Printf("server_ip=%s", srvIp)
+	srvIP := s.runctx.KubeGetIP(srvSelector, 10, 2*time.Second)
+	if !s.runctx.quiet {
+		log.Printf("server_ip=%s", srvIP)
 	}
 
-	if c.policy == "port" {
-		policyYaml := c.genPortPolicyYaml()
+	if s.policy == "port" {
+		policyYaml := s.genPortPolicyYaml()
 		policyCmd := fmt.Sprintf("kubectl apply -f %s", policyYaml)
-		c.runctx.ExecCmd(policyCmd)
+		s.runctx.ExecCmd(policyCmd)
 	}
 
 	// start netperf client (netperf)
-	cliYaml := c.genCliYaml(srvIp)
+	cliYaml := s.genCliYaml(srvIP)
 	cliCmd := fmt.Sprintf("kubectl apply -f %s", cliYaml)
-	c.runctx.ExecCmd(cliCmd)
+	s.runctx.ExecCmd(cliCmd)
 
 	// sleep the duration of the benchmark plus 10s
-	time.Sleep(time.Duration(10+c.netperf_cnf.timeout) * time.Second)
+	time.Sleep(time.Duration(10+s.NetperfCnf.timeout) * time.Second)
 
-	cliSelector := fmt.Sprintf("runid=%s,role=cli", c.runctx.id)
+	cliSelector := fmt.Sprintf("runid=%s,role=cli", s.runctx.id)
 	var cliPhase string
 	for {
-		cliPhase = c.runctx.KubeGetPhase(cliSelector)
-		if !c.runctx.quiet {
+		cliPhase = s.runctx.KubeGetPhase(cliSelector)
+		if !s.runctx.quiet {
 			log.Printf("Client phase: %s", cliPhase)
 		}
 
@@ -221,6 +221,6 @@ func (c Ctx) execute() {
 		time.Sleep(2 * time.Second)
 	}
 
-	c.runctx.KubeSaveLogs(cliSelector, fmt.Sprintf("%s/cli.log", c.runctx.dir))
-	c.runctx.KubeSaveLogs(srvSelector, fmt.Sprintf("%s/srv.log", c.runctx.dir))
+	s.runctx.KubeSaveLogs(cliSelector, fmt.Sprintf("%s/cli.log", s.runctx.dir))
+	s.runctx.KubeSaveLogs(srvSelector, fmt.Sprintf("%s/srv.log", s.runctx.dir))
 }

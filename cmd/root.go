@@ -8,14 +8,14 @@ import (
 	"time"
 )
 
-type RunCtx struct {
+type runCtx struct {
 	id    string
 	dir   string
 	quiet bool
 }
 
 var quiet bool
-var runId string
+var runID string
 var runDirBase string
 
 var rootCmd = &cobra.Command{
@@ -23,11 +23,11 @@ var rootCmd = &cobra.Command{
 	Short: "kubenetbench is a k8s network benchmark",
 }
 
-const CmdTimeout = 90 * time.Second
+const cmdTimeout = 90 * time.Second
 
 func init() {
 
-	rootCmd.PersistentFlags().StringVarP(&runId, "runid", "r", "", "run id")
+	rootCmd.PersistentFlags().StringVarP(&runID, "runid", "r", "", "run id")
 	rootCmd.MarkPersistentFlagRequired("runid")
 
 	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "quiet output")
@@ -36,20 +36,21 @@ func init() {
 	rootCmd.AddCommand(intrapodCmd)
 }
 
+// Execute runs the main (root) command
 func Execute() error {
 	return rootCmd.Execute()
 }
 
-func newRunCtx() *RunCtx {
+func newRunCtx() *runCtx {
 	datestr := time.Now().Format("20060102-150405")
-	rundir := fmt.Sprintf("%s/%s-%s", runDirBase, runId, datestr)
+	rundir := fmt.Sprintf("%s/%s-%s", runDirBase, runID, datestr)
 	err := os.Mkdir(rundir, 0755)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	return &RunCtx{
-		id:    runId,
+	return &runCtx{
+		id:    runID,
 		dir:   rundir,
 		quiet: quiet,
 	}

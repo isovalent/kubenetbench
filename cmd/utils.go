@@ -10,11 +10,11 @@ import (
 )
 
 // ExecCmd: execute a command using the shell
-func (c *RunCtx) ExecCmd(argcmd string) {
+func (c *runCtx) ExecCmd(argcmd string) {
 	if !c.quiet {
 		log.Println("$", argcmd)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), CmdTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "sh", []string{"-c", argcmd}...)
@@ -25,7 +25,7 @@ func (c *RunCtx) ExecCmd(argcmd string) {
 }
 
 func execCmdLines(argcmd string) ([]string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), CmdTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 	defer cancel()
 	var ret []string
 
@@ -52,7 +52,7 @@ func execCmdLines(argcmd string) ([]string, error) {
 	return ret, err
 }
 
-func (c *RunCtx) ExecCmdLines(argcmd string) []string {
+func (c *runCtx) ExecCmdLines(argcmd string) []string {
 
 	if !c.quiet {
 		log.Println("$", argcmd)
@@ -64,7 +64,7 @@ func (c *RunCtx) ExecCmdLines(argcmd string) []string {
 	return lines
 }
 
-func (c *RunCtx) KubeGetIP(
+func (c *runCtx) KubeGetIP(
 	selector string,
 	retries uint,
 	sleept time.Duration,
@@ -92,7 +92,7 @@ func (c *RunCtx) KubeGetIP(
 	}
 }
 
-func (c *RunCtx) KubeGetPhase(selector string) string {
+func (c *runCtx) KubeGetPhase(selector string) string {
 	cmd := fmt.Sprintf(
 		"kubectl get pod -l \"%s\" -o custom-columns=Status:.status.phase --no-headers",
 		selector,
@@ -110,7 +110,7 @@ func (c *RunCtx) KubeGetPhase(selector string) string {
 	return lines[0]
 }
 
-func (c *RunCtx) KubeSaveLogs(selector string, logfile string) {
+func (c *runCtx) KubeSaveLogs(selector string, logfile string) {
 	argcmd := fmt.Sprintf("kubectl logs -l \"%s\" > %s", selector, logfile)
 	c.ExecCmd(argcmd)
 }
