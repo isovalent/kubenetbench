@@ -10,13 +10,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type netperfConf struct {
-	timeout  int
-	dataPort uint16
-}
-
-type state struct {
-	NetperfCnf netperfConf
+type intrapodSt struct {
+	netperfCnf netperfConf
 	runctx     *runCtx
 	policy     string
 }
@@ -31,8 +26,8 @@ var intrapodCmd = &cobra.Command{
 			log.Fatal("invalid policy: ", policyArg)
 		}
 
-		ctx := state{
-			NetperfCnf: netperfConf{
+		ctx := intrapodSt{
+			netperfCnf: netperfConf{
 				timeout:  10,
 				dataPort: 8000,
 				// ctl_port:  12865,
@@ -65,7 +60,7 @@ spec:
     args: ["-D"]
 `))
 
-func (s *state) genSrvYaml() string {
+func (s *intrapodSt) genSrvYaml() string {
 	m := map[string]interface{}{
 		"runID": s.runctx.id,
 	}
@@ -79,53 +74,6 @@ func (s *state) genSrvYaml() string {
 		log.Fatal(err)
 	}
 	srvYamlTemplate.Execute(f, m)
-	f.Close()
-	return yaml
-}
-
-var cliYamlTemplate = template.Must(template.New("cli").Parse(`apiVersion: v1
-kind: Pod
-metadata:
-  name: netperf-{{.runID}}-cli
-  labels : {
-     runid: {{.runID}},
-     role: cli,
-  }
-spec:
-  restartPolicy: Never
-  containers:
-  - name: netperf
-    image: kkourt/netperf
-    command: ["netperf"]
-    args: [
-        "-l", "{{.timeout}}",     # timeout
-        "-j",                     # enable additional statistics
-        "-H", "{{.serverIP}}",    # server IP
-        "-t", "tcp_rr",           # test name
-        "--",                     # test specific arguemnts
-        "-P", "{{.dataPort}}",    # data connection port
-        # additional metrics to record
-        "-k", "THROUGHPUT,THROUGHPUT_UNITS,P50_LATENCY,P99_LATENCY,REQUEST_SIZE,RESPONSE_SIZE"
-    ]
-`))
-
-func (s *state) genCliYaml(serverIP string) string {
-	m := map[string]interface{}{
-		"runID":    s.runctx.id,
-		"timeout":  s.NetperfCnf.timeout,
-		"serverIP": serverIP,
-		"dataPort": s.NetperfCnf.dataPort,
-	}
-
-	yaml := fmt.Sprintf("%s/client.yaml", s.runctx.dir)
-	if !s.runctx.quiet {
-		log.Printf("Generating %s", yaml)
-	}
-	f, err := os.Create(yaml)
-	if err != nil {
-		log.Fatal(err)
-	}
-	cliYamlTemplate.Execute(f, m)
 	f.Close()
 	return yaml
 }
@@ -154,10 +102,10 @@ spec:
       port: {{.dataPort}}
 `))
 
-func (s *state) genPortPolicyYaml() string {
+func (s *intrapodSt) genPortPolicyYaml() string {
 	m := map[string]interface{}{
 		"runID":    s.runctx.id,
-		"dataPort": s.NetperfCnf.dataPort,
+		"dataPort": s.netperfCnf.dataPort,
 	}
 
 	yaml := fmt.Sprintf("%s/port-policy.yaml", s.runctx.dir)
@@ -173,14 +121,16 @@ func (s *state) genPortPolicyYaml() string {
 	return yaml
 }
 
-func (s state) execute() {
+func (s intrapodSt) execute() {
 	// start netperf server (netserver)
 	srvYaml := s.genSrvYaml()
 	srvCmd := fmt.Sprintf("kubectl apply -f %s", srvYaml)
 	s.runctx.ExecCmd(srvCmd)
 
 	defer func() {
-		// FIXME: this does not work if there is an error and we exit()
+		// FIXME: this does not work because we call functions that
+		// call log.Fatal() which calls exit() which does not run the
+		// deferred operations
 		delPodsCmd := fmt.Sprintf("kubectl delete pod,networkpolicy -l \"runid=%s\"", s.runctx.id)
 		s.runctx.ExecCmd(delPodsCmd)
 	}()
@@ -200,12 +150,12 @@ func (s state) execute() {
 	}
 
 	// start netperf client (netperf)
-	cliYaml := s.genCliYaml(srvIP)
+	cliYaml := s.netperfCnf.genCliYaml(s.runctx, srvIP)
 	cliCmd := fmt.Sprintf("kubectl apply -f %s", cliYaml)
 	s.runctx.ExecCmd(cliCmd)
 
 	// sleep the duration of the benchmark plus 10s
-	time.Sleep(time.Duration(10+s.NetperfCnf.timeout) * time.Second)
+	time.Sleep(time.Duration(10+s.netperfCnf.timeout) * time.Second)
 
 	cliSelector := fmt.Sprintf("runid=%s,role=cli", s.runctx.id)
 	var cliPhase string

@@ -114,3 +114,21 @@ func (c *runCtx) KubeSaveLogs(selector string, logfile string) {
 	argcmd := fmt.Sprintf("kubectl logs -l \"%s\" > %s", selector, logfile)
 	c.ExecCmd(argcmd)
 }
+
+func (c *runCtx) KubeGetServiceIP(selector string) (string, error) {
+	cmd := fmt.Sprintf(
+		"kubectl get service -l '%s' -o custom-columns=IP:.spec.clusterIP --no-headers",
+		selector,
+	)
+
+	lines, err := execCmdLines(cmd)
+	if err != nil {
+		return "", fmt.Errorf("Error executing: %s: %w", cmd, err)
+	}
+
+	if len(lines) != 1 {
+		return "", fmt.Errorf("Error executing: %s: selector did not return a singel line (result: %s)", cmd, lines)
+	}
+
+	return lines[0], nil
+}
