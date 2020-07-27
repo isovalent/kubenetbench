@@ -1,19 +1,10 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/spf13/cobra"
-	"log"
-	"os"
-	"time"
-)
 
-type runCtx struct {
-	id      string
-	dir     string
-	quiet   bool
-	cleanup bool
-}
+	"../core"
+)
 
 var quiet bool
 var runID string
@@ -24,8 +15,6 @@ var rootCmd = &cobra.Command{
 	Use:   "kubenetbench",
 	Short: "kubenetbench is a k8s network benchmark",
 }
-
-const cmdTimeout = 90 * time.Second
 
 func init() {
 
@@ -40,23 +29,11 @@ func init() {
 	rootCmd.AddCommand(serviceCmd)
 }
 
+func getRunCtx() *core.RunCtx {
+	return core.NewRunCtx(runID, runDirBase, quiet, !noCleanup)
+}
+
 // Execute runs the main (root) command
 func Execute() error {
 	return rootCmd.Execute()
-}
-
-func newRunCtx() *runCtx {
-	datestr := time.Now().Format("20060102-150405")
-	rundir := fmt.Sprintf("%s/%s-%s", runDirBase, runID, datestr)
-	err := os.Mkdir(rundir, 0755)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return &runCtx{
-		id:      runID,
-		dir:     rundir,
-		quiet:   quiet,
-		cleanup: !noCleanup,
-	}
 }

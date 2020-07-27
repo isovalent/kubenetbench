@@ -1,4 +1,4 @@
-package cmd
+package utils
 
 import (
 	"reflect"
@@ -6,7 +6,7 @@ import (
 )
 
 func TestExecCmdLines(t *testing.T) {
-	result, err := execCmdLines("echo a; echo b")
+	result, err := ExecCmdLines("echo a; echo b")
 	if err != nil {
 		t.Errorf("Error: %v", err)
 	}
