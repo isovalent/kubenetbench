@@ -10,17 +10,18 @@ import (
 	"../utils"
 )
 
+// ServiceSt is the state for the service run
 type ServiceSt struct {
 	Runctx      *RunCtx
 	ServiceType string
 }
 
-var ServiceYamlTemplate = template.Must(template.New("service").Parse(`apiVersion: apps/v1
+var serviceYamlTemplate = template.Must(template.New("service").Parse(`apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: kubenetbench-{{.runID}}-deployment
   labels : {
-    runid: {{.runID}},
+    runid: kubenetbench-{{.runID}},
     role: srv,
   }
 spec:
@@ -44,7 +45,7 @@ kind: Service
 metadata:
   name: kubenetbench-{{.runID}}-service
   labels : {
-    runid: {{.runID}},
+    runid: kubenetbench-{{.runID}},
     role: srv,
   }
 spec:
@@ -52,24 +53,19 @@ spec:
     runid: kubenetbench-{{.runID}}
     role: srv
   ports:
-    - name: netperf-ctl
-      protocol: TCP
-      port: 12865
-      targetPort: 12865
-    - name: netperf-data
-      protocol: TCP
-      port: {{.dataPort}}
-      targetPort: {{.dataPort}}
+    {{.srvPorts}}
 `))
 
 func (s *ServiceSt) genSrvYaml() (string, error) {
 	vals := map[string]interface{}{
 		"runID":        s.Runctx.id,
-		"srvContainer": "{{template \"netperf\"}}",
+		"srvContainer": "{{template \"netperfContainer\"}}",
+		"srvPorts":     "{{template \"netperfPorts\"}}",
 	}
 
 	templates := map[string]utils.PrefixRenderer{
-		"netperf": s.Runctx.benchmark.WriteSrvYaml,
+		"netperfContainer": s.Runctx.benchmark.WriteSrvContainerYaml,
+		"netperfPorts":     s.Runctx.benchmark.WriteSrvPortsYaml,
 	}
 
 	yaml := fmt.Sprintf("%s/netserv.yaml", s.Runctx.dir)
@@ -80,17 +76,17 @@ func (s *ServiceSt) genSrvYaml() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	utils.RenderTemplate(IntrapodSrvTemplate, vals, templates, f)
+	utils.RenderTemplate(serviceYamlTemplate, vals, templates, f)
 	f.Close()
 	return yaml, nil
 }
 
-var ServiceCliTemplate = template.Must(template.New("cli").Parse(`apiVersion: v1
+var serviceCliTemplate = template.Must(template.New("cli").Parse(`apiVersion: v1
 kind: Pod
 metadata:
   name: kubenetbench-{{.runID}}-cli
   labels : {
-     runid: {{.runID}},
+     runid: kubenetbench-{{.runID}},
      role: cli,
   }
 spec:
@@ -112,18 +108,19 @@ func (s *ServiceSt) genCliYaml(serverIP string) (string, error) {
 	vals := map[string]interface{}{
 		"runID":        s.Runctx.id,
 		"serverIP":     serverIP,
-		"cliContainer": "{{template \"netperf\"}}",
+		"cliContainer": "{{template \"netperfContainer\"}}",
 	}
 
 	templates := map[string]utils.PrefixRenderer{
-		"netperf": s.Runctx.benchmark.WriteCliYaml,
+		"netperfContainer": s.Runctx.benchmark.WriteCliContainerYaml,
 	}
 
-	utils.RenderTemplate(IntrapodCliTemplate, vals, templates, f)
+	utils.RenderTemplate(serviceCliTemplate, vals, templates, f)
 	f.Close()
 	return yaml, nil
 }
 
+// Execute service run
 func (s ServiceSt) Execute() error {
 	// start server pod (netserver)
 	srvYamlFname, err := s.genSrvYaml()
@@ -135,7 +132,7 @@ func (s ServiceSt) Execute() error {
 		return err
 	}
 
-	srvSelector := fmt.Sprintf("runid=%s,role=srv", s.Runctx.id)
+	srvSelector := fmt.Sprintf("runid=kubenetbench-%s,role=srv", s.Runctx.id)
 
 	defer func() {
 		// attempt to save server logs
@@ -147,9 +144,9 @@ func (s ServiceSt) Execute() error {
 		s.Runctx.KubeCleanup()
 	}()
 
-	// get server pod IP
+	// get service IP
 	time.Sleep(2 * time.Second)
-	srvIP, err := s.Runctx.KubeGetPodIP(srvSelector, 10, 2*time.Second)
+	srvIP, err := s.Runctx.KubeGetServiceIP(srvSelector, 10, 2*time.Second)
 	if err != nil {
 		return err
 	}
@@ -168,7 +165,7 @@ func (s ServiceSt) Execute() error {
 		return fmt.Errorf("failed to initiate client: %w", err)
 	}
 
-	cliSelector := fmt.Sprintf("runid=%s,role=cli", s.Runctx.id)
+	cliSelector := fmt.Sprintf("runid=kubenetbench-%s,role=cli", s.Runctx.id)
 	// attempt to save client logs
 	defer s.Runctx.KubeSaveLogs(cliSelector, fmt.Sprintf("%s/cli.log", s.Runctx.dir))
 

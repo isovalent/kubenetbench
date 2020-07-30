@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/spf13/cobra"
 
@@ -26,6 +27,18 @@ var nopCmd = &cobra.Command{
 	Run:   func(cmd *cobra.Command, args []string) {},
 }
 
+var cleanCmd = &cobra.Command{
+	Use:   "clean",
+	Short: "clean k8s resources",
+	Run: func(cmd *cobra.Command, args []string) {
+		runctx, err := getRunCtx()
+		if err != nil {
+			log.Fatal("initializing run context failed:", err)
+		}
+		runctx.KubeCleanup()
+	},
+}
+
 func init() {
 
 	rootCmd.PersistentFlags().StringVarP(&runID, "runid", "i", "", "run id")
@@ -38,6 +51,7 @@ func init() {
 	rootCmd.PersistentFlags().IntVarP(&benchmarkDuration, "duration", "d", 10, "benchmark duration (sec)")
 
 	rootCmd.AddCommand(nopCmd)
+	rootCmd.AddCommand(cleanCmd)
 	rootCmd.AddCommand(intrapodCmd)
 	rootCmd.AddCommand(serviceCmd)
 }

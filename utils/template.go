@@ -9,6 +9,7 @@ import (
 	"text/template/parse"
 )
 
+// PrefixRenderer writes data to pw
 type PrefixRenderer = func(pw *PrefixWriter, params map[string]interface{})
 
 // RenderTemplate renders templates respecting indentation
@@ -63,7 +64,10 @@ func RenderTemplate(
 			pw.PushPrefix(strings.Repeat(" ", lastIndent))
 			renderer(pw, vmap)
 			pw.PopPrefix()
-			return pw.Done()
+			err := pw.Done()
+			if err != nil {
+				return fmt.Errorf("error terminating prefix writer: %w", err)
+			}
 		default:
 			panic("Unexpected node type")
 		}

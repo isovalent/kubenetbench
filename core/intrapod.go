@@ -10,18 +10,18 @@ import (
 	"../utils"
 )
 
-// InterpodSt is the necessary state for executing an intrapod (pod-to-pod) benchmark
+// IntrapodSt is the necessary state for executing an intrapod (pod-to-pod) benchmark
 type IntrapodSt struct {
 	Runctx *RunCtx
 	Policy string
 }
 
-var IntrapodSrvTemplate = template.Must(template.New("srv").Parse(`apiVersion: v1
+var intrapodSrvTemplate = template.Must(template.New("srv").Parse(`apiVersion: v1
 kind: Pod
 metadata:
   name: kubenetbench-{{.runID}}-srv
   labels : {
-    runid: {{.runID}},
+    runid: kubenetbench-{{.runID}},
     role: srv,
   }
 spec:
@@ -32,11 +32,11 @@ spec:
 func (s *IntrapodSt) genSrvYaml() (string, error) {
 	vals := map[string]interface{}{
 		"runID":        s.Runctx.id,
-		"srvContainer": "{{template \"netperf\"}}",
+		"srvContainer": "{{template \"netperfContainer\"}}",
 	}
 
 	templates := map[string]utils.PrefixRenderer{
-		"netperf": s.Runctx.benchmark.WriteSrvYaml,
+		"netperfContainer": s.Runctx.benchmark.WriteSrvContainerYaml,
 	}
 
 	yaml := fmt.Sprintf("%s/netserv.yaml", s.Runctx.dir)
@@ -47,17 +47,17 @@ func (s *IntrapodSt) genSrvYaml() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	utils.RenderTemplate(IntrapodSrvTemplate, vals, templates, f)
+	utils.RenderTemplate(intrapodSrvTemplate, vals, templates, f)
 	f.Close()
 	return yaml, nil
 }
 
-var IntrapodPortPolicyTemplate = template.Must(template.New("policy").Parse(`apiVersion: networking.k8s.io/v1
+var intrapodPortPolicyTemplate = template.Must(template.New("policy").Parse(`apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: kubenetbench-{{.runID}}-policy
   labels : {
-     "runid": {{.runID}},
+     "runid": kubenetbench-{{.runID}},
   }
 spec:
   podSelector:
@@ -89,17 +89,17 @@ func (s *IntrapodSt) genPortPolicyYaml() string {
 	if err != nil {
 		log.Fatal(err)
 	}
-	IntrapodPortPolicyTemplate.Execute(f, m)
+	intrapodPortPolicyTemplate.Execute(f, m)
 	f.Close()
 	return yaml
 }
 
-var IntrapodCliTemplate = template.Must(template.New("cli").Parse(`apiVersion: v1
+var intrapodCliTemplate = template.Must(template.New("cli").Parse(`apiVersion: v1
 kind: Pod
 metadata:
   name: kubenetbench-{{.runID}}-cli
   labels : {
-     runid: {{.runID}},
+     runid: kubenetbench-{{.runID}},
      role: cli,
   }
 spec:
@@ -121,18 +121,19 @@ func (s *IntrapodSt) genCliYaml(serverIP string) (string, error) {
 	vals := map[string]interface{}{
 		"runID":        s.Runctx.id,
 		"serverIP":     serverIP,
-		"cliContainer": "{{template \"netperf\"}}",
+		"cliContainer": "{{template \"netperfContainer\"}}",
 	}
 
 	templates := map[string]utils.PrefixRenderer{
-		"netperf": s.Runctx.benchmark.WriteCliYaml,
+		"netperfContainer": s.Runctx.benchmark.WriteCliContainerYaml,
 	}
 
-	utils.RenderTemplate(IntrapodCliTemplate, vals, templates, f)
+	utils.RenderTemplate(intrapodCliTemplate, vals, templates, f)
 	f.Close()
 	return yaml, nil
 }
 
+// Execute intrapod command
 func (s IntrapodSt) Execute() error {
 	// start server pod (netserver)
 	srvYamlFname, err := s.genSrvYaml()
@@ -145,7 +146,7 @@ func (s IntrapodSt) Execute() error {
 		return err
 	}
 
-	srvSelector := fmt.Sprintf("runid=%s,role=srv", s.Runctx.id)
+	srvSelector := fmt.Sprintf("runid=kubenetbench-%s,role=srv", s.Runctx.id)
 
 	defer func() {
 		// attempt to save server logs
@@ -187,7 +188,7 @@ func (s IntrapodSt) Execute() error {
 		return fmt.Errorf("failed to initiate client: %w", err)
 	}
 
-	cliSelector := fmt.Sprintf("runid=%s,role=cli", s.Runctx.id)
+	cliSelector := fmt.Sprintf("runid=kubenetbench-%s,role=cli", s.Runctx.id)
 	// attempt to save client logs
 	defer s.Runctx.KubeSaveLogs(cliSelector, fmt.Sprintf("%s/cli.log", s.Runctx.dir))
 

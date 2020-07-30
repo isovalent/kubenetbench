@@ -24,6 +24,7 @@ func NewPrefixWriter(w io.Writer, skipFirst bool) *PrefixWriter {
 	}
 }
 
+// Prefix returns the prefix
 func (pw *PrefixWriter) Prefix() string {
 	return strings.Join(pw.prefixes, "")
 }
@@ -40,10 +41,9 @@ func (pw *PrefixWriter) flush() (int, error) {
 		}
 
 		return io.WriteString(pw.writer, pw.buff.String())
-	} else {
-		return 0, nil
 	}
 
+	return 0, nil
 }
 
 func (pw *PrefixWriter) Write(data []byte) (int, error) {
@@ -69,6 +69,7 @@ func (pw *PrefixWriter) Write(data []byte) (int, error) {
 	return len(data), nil
 }
 
+// WriteString  writes a string
 func (pw *PrefixWriter) WriteString(data string) (int, error) {
 
 	for i, b := range data {
@@ -92,6 +93,8 @@ func (pw *PrefixWriter) WriteString(data string) (int, error) {
 	return len(data), nil
 }
 
+// AppendNewLineOrDie appends a new line and panics in case of an error
+// here PrefixWriter will not scan the input for new lines
 func (pw *PrefixWriter) AppendNewLineOrDie(s string) {
 	pw.flush()
 
@@ -109,6 +112,7 @@ func (pw *PrefixWriter) AppendNewLineOrDie(s string) {
 	}
 }
 
+// WriteOrDie writes or panics
 func (pw *PrefixWriter) WriteOrDie(data []byte) {
 	_, err := pw.Write(data)
 	if err != nil {
@@ -116,6 +120,7 @@ func (pw *PrefixWriter) WriteOrDie(data []byte) {
 	}
 }
 
+// WriteStringOrDie writes a string or panics
 func (pw *PrefixWriter) WriteStringOrDie(data string) {
 	_, err := pw.WriteString(data)
 	if err != nil {
@@ -123,10 +128,12 @@ func (pw *PrefixWriter) WriteStringOrDie(data string) {
 	}
 }
 
+// PushPrefix pushes a prefix to the stack
 func (pw *PrefixWriter) PushPrefix(prefix string) {
 	pw.prefixes = append(pw.prefixes, prefix)
 }
 
+// PopPrefix pops a prefix from the stack
 func (pw *PrefixWriter) PopPrefix() string {
 	l := len(pw.prefixes)
 	if l == 0 {
@@ -143,6 +150,7 @@ func (pw *PrefixWriter) Flush() error {
 	return err
 }
 
+// Done flushes buffered and and ensures prefix stack is empty
 func (pw *PrefixWriter) Done() error {
 	_, err := pw.flush()
 	if err != nil {

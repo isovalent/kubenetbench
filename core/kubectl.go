@@ -15,7 +15,7 @@ func (c *RunCtx) KubeGetPodIP(
 	st time.Duration,
 ) (string, error) {
 
-	retries_orig := retries
+	retriesOrig := retries
 	cmd := fmt.Sprintf(
 		"kubectl get pod -l \"%s\" -o custom-columns=IP:.status.podIP --no-headers",
 		selector,
@@ -30,7 +30,7 @@ func (c *RunCtx) KubeGetPodIP(
 		}
 
 		if retries == 0 {
-			return lines[0], fmt.Errorf("Error exeucting %s after %d retries (last error:%w)", cmd, retries_orig, err)
+			return "", fmt.Errorf("Error executing %s after %d retries (last error:%w)", cmd, retriesOrig, err)
 		}
 
 		retries--
@@ -69,25 +69,37 @@ func (c *RunCtx) KubeSaveLogs(selector string, logfile string) error {
 
 // KubeGetServiceIP returns the ip of a service
 // NB: probably a better option to use DNS
-func (c *RunCtx) KubeGetServiceIP(selector string) (string, error) {
+func (c *RunCtx) KubeGetServiceIP(
+	selector string,
+	retries uint,
+	st time.Duration,
+) (string, error) {
+
+	retriesOrig := retries
 	cmd := fmt.Sprintf(
 		"kubectl get service -l '%s' -o custom-columns=IP:.spec.clusterIP --no-headers",
 		selector,
 	)
 
-	lines, err := utils.ExecCmdLines(cmd)
-	if err != nil {
-		return "", fmt.Errorf("Error executing: %s: %w", cmd, err)
-	}
+	for {
+		if !c.quiet {
+			log.Printf("$ %s # (remaining retries: %d)", cmd, retries)
+		}
+		lines, err := utils.ExecCmdLines(cmd)
+		if err == nil && len(lines) == 1 && lines[0] != "<none>" {
+			return lines[0], nil
+		}
 
-	if len(lines) != 1 {
-		return "", fmt.Errorf("Error executing: %s: selector did not return a singel line (result: %s)", cmd, lines)
-	}
+		if retries == 0 {
+			return "", fmt.Errorf("Error executing %s after %d retries (last error:%w)", cmd, retriesOrig, err)
+		}
 
-	return lines[0], nil
+		retries--
+		time.Sleep(st)
+	}
 }
 
-// Kubectl apply
+// KubeApply calls kubectl apply -f
 func (c *RunCtx) KubeApply(fname string) error {
 	cmd := fmt.Sprintf("kubectl apply -f %s", fname)
 	if !c.quiet {
@@ -96,8 +108,9 @@ func (c *RunCtx) KubeApply(fname string) error {
 	return utils.ExecCmd(cmd)
 }
 
+// KubeCleanup deletes pods and networkpolicies from our run
 func (c *RunCtx) KubeCleanup() error {
-	cmd := fmt.Sprintf("kubectl delete pod,networkpolicy -l \"runid=%s\"", c.id)
+	cmd := fmt.Sprintf("kubectl delete pod,deployment,service,networkpolicy -l \"kubenetbench-runid=%s\"", c.id)
 	if !c.quiet {
 		log.Printf("$ %s ", cmd)
 	}

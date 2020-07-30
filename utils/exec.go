@@ -10,7 +10,7 @@ import (
 // global command timeout parameter
 const cmdTimeout = 90 * time.Second
 
-// ExecCmd: execute a command using the shell
+// ExecCmd executes a command using the shell
 func ExecCmd(argcmd string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 	defer cancel()
@@ -20,7 +20,7 @@ func ExecCmd(argcmd string) error {
 	return err
 }
 
-// execCmdLines: execute a command using the shell, and return the output lines or an error
+// ExecCmdLines executes a command using the shell, and return the output lines or an error
 func ExecCmdLines(argcmd string) ([]string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 	defer cancel()

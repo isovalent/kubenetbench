@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// runCtx is the context for a benchmark run
+// RunCtx is the context for a benchmark run
 type RunCtx struct {
 	id        string    // id identifies the run
 	dir       string    // directory to store results/etc.
@@ -16,7 +16,7 @@ type RunCtx struct {
 	benchmark Benchmark // underlying benchmark interface
 }
 
-// newRunCtx creates a new RunCtx
+// NewRunCtx creates a new RunCtx
 func NewRunCtx(
 	rid string,
 	ridDirBase string,

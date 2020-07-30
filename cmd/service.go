@@ -27,7 +27,10 @@ var serviceCmd = &cobra.Command{
 			Runctx:      runctx,
 			ServiceType: serviceTypeArg,
 		}
-		st.Execute()
+		err = st.Execute()
+		if err != nil {
+			log.Fatal("service execution failed:", err)
+		}
 	},
 }
 
