@@ -1,48 +1,62 @@
 package core
 
 import (
-	"text/template"
+	"fmt"
+
+	"../utils"
 )
 
 type NetperfConf struct {
 	Timeout  int
 	DataPort uint16
+	TestName string
 }
 
-func NetperfConfDefault() *NetperfConf {
-	return &NetperfConf{
-		Timeout:  10,
-		DataPort: 8000,
-		// ctl_port:  12865,
+type NetperfRRConf struct {
+	NetperfConf
+}
+
+func (cnf *NetperfConf) GetTimeout() int {
+	return cnf.Timeout
+}
+
+func (cnf *NetperfConf) WriteSrvYaml(pw *utils.PrefixWriter, params map[string]interface{}) {
+	pw.AppendNewLineOrDie(`name: netperf-srv`)
+	pw.AppendNewLineOrDie(`image: kkourt/netperf`)
+	pw.AppendNewLineOrDie(`command: ["netserver"]`)
+	pw.AppendNewLineOrDie(`args : [`)
+	pw.PushPrefix("    ")
+	pw.AppendNewLineOrDie(`"-D", # dont daemonize`)
+	pw.PopPrefix()
+	pw.AppendNewLineOrDie(`]`)
+}
+
+func (cnf *NetperfConf) WriteCliStart(pw *utils.PrefixWriter, params map[string]interface{}) {
+	pw.AppendNewLineOrDie(`name: netperf-cli`)
+	pw.AppendNewLineOrDie(`image: kkourt/netperf`)
+	pw.AppendNewLineOrDie(`command: ["netperf"]`)
+}
+
+func (cnf *NetperfConf) WriteCliBaseArgs(pw *utils.PrefixWriter, params map[string]interface{}) {
+	serverIP, ok := params["serverIP"]
+	if !ok {
+		panic("serverIP undefined")
 	}
+
+	pw.AppendNewLineOrDie(fmt.Sprintf(`"-l", "%d", # timeout`, cnf.Timeout))
+	pw.AppendNewLineOrDie(`"-j", # enable additional statistics`)
+	pw.AppendNewLineOrDie(fmt.Sprintf(`"-H", "%v",`, serverIP))
+	pw.AppendNewLineOrDie(fmt.Sprintf(`"-t", "%s", # testname`, cnf.TestName))
 }
 
-var netperfSrvYamlTempl_ = template.Must(template.New("netserver").Parse(`name: netperf
-image: kkourt/netperf
-command: ["netserver"]
-# -D: dont daemonize
-args: ["-D"]
-`))
-
-func netperfSrvYaml() *template.Template {
-	return netperfSrvYamlTempl_
-}
-
-var netperfCliYamlTempl_ = template.Must(template.New("netperf").Parse(`name: netperf
-image: kkourt/netperf
-command: ["netperf"]
-args: [
-    "-l", "{{.timeout}}",     # timeout
-    "-j",                     # enable additional statistics
-    "-H", "{{.serverIP}}",    # server IP
-    "-t", "tcp_rr",           # test name
-    "--",                     # test-specific arguments
-    "-P", "{{.dataPort}}",    # data connection port
-    # additional metrics to record
-    "-k", "THROUGHPUT,THROUGHPUT_UNITS,P50_LATENCY,P99_LATENCY,REQUEST_SIZE,RESPONSE_SIZE"
-]
-`))
-
-func netperfCliYaml() *template.Template {
-	return netperfCliYamlTempl_
+func (cnf *NetperfRRConf) WriteCliYaml(pw *utils.PrefixWriter, params map[string]interface{}) {
+	cnf.WriteCliStart(pw, params)
+	pw.AppendNewLineOrDie(`args : [`)
+	pw.PushPrefix("    ")
+	cnf.WriteCliBaseArgs(pw, params)
+	pw.AppendNewLineOrDie(`"--",`)
+	pw.AppendNewLineOrDie(fmt.Sprintf(`"-P", "%d", # data connection port`, cnf.DataPort))
+	pw.AppendNewLineOrDie(`"-k", "THROUGHPUT,THROUGHPUT_UNITS,P50_LATENCY,P99_LATENCY,REQUEST_SIZE,RESPONSE_SIZE",`)
+	pw.PopPrefix()
+	pw.AppendNewLineOrDie(`]`)
 }

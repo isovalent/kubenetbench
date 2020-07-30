@@ -12,9 +12,8 @@ import (
 
 // InterpodSt is the necessary state for executing an intrapod (pod-to-pod) benchmark
 type IntrapodSt struct {
-	Runctx      *RunCtx
-	NetperfConf *NetperfConf // NB: at some point we might want to replace this with an interface
-	Policy      string
+	Runctx *RunCtx
+	Policy string
 }
 
 var IntrapodSrvTemplate = template.Must(template.New("srv").Parse(`apiVersion: v1
@@ -36,8 +35,8 @@ func (s *IntrapodSt) genSrvYaml() (string, error) {
 		"srvContainer": "{{template \"netperf\"}}",
 	}
 
-	templates := map[string]*template.Template{
-		"netperf": netperfSrvYaml(),
+	templates := map[string]utils.PrefixRenderer{
+		"netperf": s.Runctx.benchmark.WriteSrvYaml,
 	}
 
 	yaml := fmt.Sprintf("%s/netserv.yaml", s.Runctx.dir)
@@ -79,8 +78,7 @@ spec:
 
 func (s *IntrapodSt) genPortPolicyYaml() string {
 	m := map[string]interface{}{
-		"runID":    s.Runctx.id,
-		"dataPort": s.NetperfConf.DataPort,
+		"runID": s.Runctx.id,
 	}
 
 	yaml := fmt.Sprintf("%s/port-policy.yaml", s.Runctx.dir)
@@ -110,7 +108,7 @@ spec:
   - {{.cliContainer}}
 `))
 
-func (s *IntrapodSt) getCliYaml(serverIP string) (string, error) {
+func (s *IntrapodSt) genCliYaml(serverIP string) (string, error) {
 	yaml := fmt.Sprintf("%s/client.yaml", s.Runctx.dir)
 	if !s.Runctx.quiet {
 		log.Printf("Generating %s", yaml)
@@ -122,14 +120,12 @@ func (s *IntrapodSt) getCliYaml(serverIP string) (string, error) {
 
 	vals := map[string]interface{}{
 		"runID":        s.Runctx.id,
-		"timeout":      s.NetperfConf.Timeout,
 		"serverIP":     serverIP,
-		"dataPort":     s.NetperfConf.DataPort,
 		"cliContainer": "{{template \"netperf\"}}",
 	}
 
-	templates := map[string]*template.Template{
-		"netperf": netperfCliYaml(),
+	templates := map[string]utils.PrefixRenderer{
+		"netperf": s.Runctx.benchmark.WriteCliYaml,
 	}
 
 	utils.RenderTemplate(IntrapodCliTemplate, vals, templates, f)
@@ -143,6 +139,7 @@ func (s IntrapodSt) Execute() error {
 	if err != nil {
 		return err
 	}
+
 	err = s.Runctx.KubeApply(srvYamlFname)
 	if err != nil {
 		return err
@@ -180,7 +177,7 @@ func (s IntrapodSt) Execute() error {
 	}
 
 	// start netperf client (netperf)
-	cliYamlFname, err := s.getCliYaml(srvIP)
+	cliYamlFname, err := s.genCliYaml(srvIP)
 	if err != nil {
 		return err
 	}
@@ -195,7 +192,7 @@ func (s IntrapodSt) Execute() error {
 	defer s.Runctx.KubeSaveLogs(cliSelector, fmt.Sprintf("%s/cli.log", s.Runctx.dir))
 
 	// sleep the duration of the benchmark plus 10s
-	time.Sleep(time.Duration(10+s.NetperfConf.Timeout) * time.Second)
+	time.Sleep(time.Duration(10+s.Runctx.benchmark.GetTimeout()) * time.Second)
 
 	var cliPhase string
 	for {

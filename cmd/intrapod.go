@@ -18,12 +18,15 @@ var intrapodCmd = &cobra.Command{
 			log.Fatal("invalid policy: ", policyArg)
 		}
 
-		st := core.IntrapodSt{
-			Runctx:      getRunCtx(),
-			NetperfConf: getNetperfConf(),
-			Policy:      policyArg,
+		runctx, err := getRunCtx()
+		if err != nil {
+			log.Fatal("initializing run context failed:", err)
 		}
-		err := st.Execute()
+		st := core.IntrapodSt{
+			Runctx: runctx,
+			Policy: policyArg,
+		}
+		err = st.Execute()
 		if err != nil {
 			log.Fatal("intrapod execution failed:", err)
 		}

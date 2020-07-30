@@ -12,7 +12,6 @@ import (
 
 type ServiceSt struct {
 	Runctx      *RunCtx
-	NetperfConf *NetperfConf
 	ServiceType string
 }
 
@@ -66,12 +65,11 @@ spec:
 func (s *ServiceSt) genSrvYaml() (string, error) {
 	vals := map[string]interface{}{
 		"runID":        s.Runctx.id,
-		"dataPort":     s.NetperfConf.DataPort,
 		"srvContainer": "{{template \"netperf\"}}",
 	}
 
-	templates := map[string]*template.Template{
-		"netperf": netperfSrvYaml(),
+	templates := map[string]utils.PrefixRenderer{
+		"netperf": s.Runctx.benchmark.WriteSrvYaml,
 	}
 
 	yaml := fmt.Sprintf("%s/netserv.yaml", s.Runctx.dir)
@@ -101,7 +99,7 @@ spec:
   - {{.cliContainer}}
 `))
 
-func (s *ServiceSt) getCliYaml(serverIP string) (string, error) {
+func (s *ServiceSt) genCliYaml(serverIP string) (string, error) {
 	yaml := fmt.Sprintf("%s/client.yaml", s.Runctx.dir)
 	if !s.Runctx.quiet {
 		log.Printf("Generating %s", yaml)
@@ -113,14 +111,12 @@ func (s *ServiceSt) getCliYaml(serverIP string) (string, error) {
 
 	vals := map[string]interface{}{
 		"runID":        s.Runctx.id,
-		"timeout":      s.NetperfConf.Timeout,
 		"serverIP":     serverIP,
-		"dataPort":     s.NetperfConf.DataPort,
 		"cliContainer": "{{template \"netperf\"}}",
 	}
 
-	templates := map[string]*template.Template{
-		"netperf": netperfCliYaml(),
+	templates := map[string]utils.PrefixRenderer{
+		"netperf": s.Runctx.benchmark.WriteCliYaml,
 	}
 
 	utils.RenderTemplate(IntrapodCliTemplate, vals, templates, f)
@@ -162,7 +158,7 @@ func (s ServiceSt) Execute() error {
 	}
 
 	// start netperf client (netperf)
-	cliYamlFname, err := s.getCliYaml(srvIP)
+	cliYamlFname, err := s.genCliYaml(srvIP)
 	if err != nil {
 		return err
 	}
@@ -177,7 +173,7 @@ func (s ServiceSt) Execute() error {
 	defer s.Runctx.KubeSaveLogs(cliSelector, fmt.Sprintf("%s/cli.log", s.Runctx.dir))
 
 	// sleep the duration of the benchmark plus 10s
-	time.Sleep(time.Duration(10+s.NetperfConf.Timeout) * time.Second)
+	time.Sleep(time.Duration(10+s.Runctx.benchmark.GetTimeout()) * time.Second)
 
 	var cliPhase string
 	for {

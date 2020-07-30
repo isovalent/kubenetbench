@@ -29,8 +29,13 @@ func TestPizza(t *testing.T) {
 	mainT := template.Must(template.New("main").Parse(mainTmpl))
 	pizzaT := template.Must(template.New("pizza").Parse(pizzaTmpl))
 
-	templates := map[string]*template.Template{
-		"pizza": pizzaT,
+	templates := map[string]PrefixRenderer{
+		"pizza": func(pw *PrefixWriter, params map[string]interface{}) {
+			err := pizzaT.Execute(pw, params)
+			if err != nil {
+				panic(err)
+			}
+		},
 	}
 
 	var bld strings.Builder

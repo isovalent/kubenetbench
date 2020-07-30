@@ -9,10 +9,17 @@ import (
 	"text/template/parse"
 )
 
-// RenderTemplate is a text/template hack for attaching templates to other templates using indentation.
+type PrefixRenderer = func(pw *PrefixWriter, params map[string]interface{})
+
+// RenderTemplate renders templates respecting indentation
 // Its intended use is for YAML templates
 // check template_test for an example.
-func RenderTemplate(main0 *template.Template, vmap map[string]interface{}, tmap map[string]*template.Template, wr io.Writer) error {
+func RenderTemplate(
+	main0 *template.Template,
+	vmap map[string]interface{},
+	tmap map[string]PrefixRenderer,
+	wr io.Writer,
+) error {
 	var buff bytes.Buffer
 
 	main0.Execute(&buff, vmap)
@@ -45,16 +52,18 @@ func RenderTemplate(main0 *template.Template, vmap map[string]interface{}, tmap 
 			}
 		case parse.NodeTemplate:
 			nodeTmpl := node.(*parse.TemplateNode)
-			templ, ok := tmap[nodeTmpl.Name]
+			renderer, ok := tmap[nodeTmpl.Name]
 			if !ok {
 				return fmt.Errorf("template %s does not exist", nodeTmpl.Name)
 			}
 			if lastIndent == -1 {
 				panic("NYI")
 			}
-			pw := NewPrefixWriter(wr, strings.Repeat(" ", lastIndent), true)
-			RenderTemplate(templ, vmap, tmap, pw)
-			pw.Flush()
+			pw := NewPrefixWriter(wr, true)
+			pw.PushPrefix(strings.Repeat(" ", lastIndent))
+			renderer(pw, vmap)
+			pw.PopPrefix()
+			return pw.Done()
 		default:
 			panic("Unexpected node type")
 		}

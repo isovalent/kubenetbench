@@ -19,9 +19,12 @@ var serviceCmd = &cobra.Command{
 			log.Fatal("invalid policy: ", serviceTypeArg)
 		}
 
+		runctx, err := getRunCtx()
+		if err != nil {
+			log.Fatal("initializing run context failed:", err)
+		}
 		st := core.ServiceSt{
-			Runctx:      getRunCtx(),
-			NetperfConf: getNetperfConf(),
+			Runctx:      runctx,
 			ServiceType: serviceTypeArg,
 		}
 		st.Execute()
