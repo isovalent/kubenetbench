@@ -21,7 +21,7 @@ kind: Pod
 metadata:
   name: kubenetbench-{{.runID}}-srv
   labels : {
-    runid: kubenetbench-{{.runID}},
+    kubenetbench-runid: {{.runID}},
     role: srv,
   }
 spec:
@@ -57,7 +57,7 @@ kind: NetworkPolicy
 metadata:
   name: kubenetbench-{{.runID}}-policy
   labels : {
-     "runid": kubenetbench-{{.runID}},
+     "kubenetbench-runid": {{.runID}},
   }
 spec:
   podSelector:
@@ -99,7 +99,7 @@ kind: Pod
 metadata:
   name: kubenetbench-{{.runID}}-cli
   labels : {
-     runid: kubenetbench-{{.runID}},
+     kubenetbench-runid: {{.runID}},
      role: cli,
   }
 spec:
@@ -146,7 +146,7 @@ func (s IntrapodSt) Execute() error {
 		return err
 	}
 
-	srvSelector := fmt.Sprintf("runid=kubenetbench-%s,role=srv", s.Runctx.id)
+	srvSelector := fmt.Sprintf("kubenetbench-runid=%s,role=srv", s.Runctx.id)
 
 	defer func() {
 		// attempt to save server logs
@@ -188,7 +188,7 @@ func (s IntrapodSt) Execute() error {
 		return fmt.Errorf("failed to initiate client: %w", err)
 	}
 
-	cliSelector := fmt.Sprintf("runid=kubenetbench-%s,role=cli", s.Runctx.id)
+	cliSelector := fmt.Sprintf("kubenetbench-runid=%s,role=cli", s.Runctx.id)
 	// attempt to save client logs
 	defer s.Runctx.KubeSaveLogs(cliSelector, fmt.Sprintf("%s/cli.log", s.Runctx.dir))
 

@@ -21,19 +21,19 @@ kind: Deployment
 metadata:
   name: kubenetbench-{{.runID}}-deployment
   labels : {
-    runid: kubenetbench-{{.runID}},
+    kubenetbench-runid: {{.runID}},
     role: srv,
   }
 spec:
   replicas: 1
   selector:
     matchLabels:
-      runid: kubenetbench-{{.runID}}
+      kubenetbench-runid: {{.runID}}
       role: srv
   template:
     metadata:
       labels : {
-        runid: kubenetbench-{{.runID}},
+        kubenetbench-runid: {{.runID}},
         role: srv,
       }
     spec:
@@ -45,12 +45,12 @@ kind: Service
 metadata:
   name: kubenetbench-{{.runID}}-service
   labels : {
-    runid: kubenetbench-{{.runID}},
+    kubenetbench-runid: {{.runID}},
     role: srv,
   }
 spec:
   selector:
-    runid: kubenetbench-{{.runID}}
+    kubenetbench-runid: {{.runID}}
     role: srv
   ports:
     {{.srvPorts}}
@@ -86,7 +86,7 @@ kind: Pod
 metadata:
   name: kubenetbench-{{.runID}}-cli
   labels : {
-     runid: kubenetbench-{{.runID}},
+     kubenetbench-runid: {{.runID}},
      role: cli,
   }
 spec:
@@ -132,7 +132,7 @@ func (s ServiceSt) Execute() error {
 		return err
 	}
 
-	srvSelector := fmt.Sprintf("runid=kubenetbench-%s,role=srv", s.Runctx.id)
+	srvSelector := fmt.Sprintf("kubenetbench-runid=%s,role=srv", s.Runctx.id)
 
 	defer func() {
 		// attempt to save server logs
@@ -165,7 +165,7 @@ func (s ServiceSt) Execute() error {
 		return fmt.Errorf("failed to initiate client: %w", err)
 	}
 
-	cliSelector := fmt.Sprintf("runid=kubenetbench-%s,role=cli", s.Runctx.id)
+	cliSelector := fmt.Sprintf("kubenetbench-runid=%s,role=cli", s.Runctx.id)
 	// attempt to save client logs
 	defer s.Runctx.KubeSaveLogs(cliSelector, fmt.Sprintf("%s/cli.log", s.Runctx.dir))
 
