@@ -58,9 +58,34 @@ func (c *RunCtx) KubeGetPodPhase(selector string) (string, error) {
 	return lines[0], nil
 }
 
+// KubeGetPodName returns the name of a pod
+func (c *RunCtx) KubeGetPodName(selector string) (string, error) {
+	cmd := fmt.Sprintf(
+		`kubectl get pod -l "%s"  -o custom-columns=Name:.metadata.name --no-headers`,
+		selector,
+	)
+
+	lines, err := utils.ExecCmdLines(cmd)
+	if err != nil {
+		return "", fmt.Errorf("command %s failed: %w", cmd, err)
+	}
+
+	if len(lines) != 1 {
+		log.Fatal("Selector did not provide single result cmd:", cmd, "result:", lines)
+		return "", fmt.Errorf("selector %s did not provide single result: command: %s; result: %s", selector, cmd, lines)
+	}
+
+	return lines[0], nil
+}
+
 // KubeSaveLogs saves logs using a selector
+// NB: for whaterver reason, kubecutl logs -l ??? truncates the logs
 func (c *RunCtx) KubeSaveLogs(selector string, logfile string) error {
-	argcmd := fmt.Sprintf("kubectl logs -l \"%s\" > %s", selector, logfile)
+	podname, err := c.KubeGetPodName(selector)
+	if err != nil {
+		return fmt.Errorf("Failed to get pod name: %w", err)
+	}
+	argcmd := fmt.Sprintf(`kubectl logs %s > %s`, podname, logfile)
 	if !c.quiet {
 		log.Printf("$ %s ", argcmd)
 	}
@@ -114,5 +139,12 @@ func (c *RunCtx) KubeCleanup() error {
 	if !c.quiet {
 		log.Printf("$ %s ", cmd)
 	}
-	return utils.ExecCmd(cmd)
+
+	if c.cleanup {
+		return utils.ExecCmd(cmd)
+	} else if !c.quiet {
+		log.Printf("Cleanup disabled")
+	}
+
+	return nil
 }

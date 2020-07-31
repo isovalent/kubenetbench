@@ -208,7 +208,7 @@ func (s IntrapodSt) Execute() error {
 		if cliPhase == "Succeeded" || cliPhase == "Failed" {
 			break
 		}
-		time.Sleep(2 * time.Second)
+		time.Sleep(10 * time.Second)
 	}
 
 	return nil
