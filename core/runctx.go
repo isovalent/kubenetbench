@@ -9,17 +9,19 @@ import (
 
 // RunCtx is the context for a benchmark run
 type RunCtx struct {
-	id        string    // id identifies the run
-	dir       string    // directory to store results/etc.
-	quiet     bool      // supress output
-	cleanup   bool      // perform cleanup: remove k8s entitites (pods, policies, etc.)
-	benchmark Benchmark // underlying benchmark interface
+	id          string    // id identifies the run
+	dir         string    // directory to store results/etc.
+	cliAffinity string    // client affinity
+	quiet       bool      // supress output
+	cleanup     bool      // perform cleanup: remove k8s entitites (pods, policies, etc.)
+	benchmark   Benchmark // underlying benchmark interface
 }
 
 // NewRunCtx creates a new RunCtx
 func NewRunCtx(
 	rid string,
 	ridDirBase string,
+	cliAffinity string,
 	quiet bool,
 	cleanup bool,
 	benchmark Benchmark,
@@ -32,10 +34,11 @@ func NewRunCtx(
 	}
 
 	return &RunCtx{
-		id:        rid,
-		dir:       rundir,
-		quiet:     quiet,
-		cleanup:   cleanup,
-		benchmark: benchmark,
+		id:          rid,
+		dir:         rundir,
+		cliAffinity: cliAffinity,
+		quiet:       quiet,
+		cleanup:     cleanup,
+		benchmark:   benchmark,
 	}
 }

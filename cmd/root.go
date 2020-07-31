@@ -15,6 +15,7 @@ var runDirBase string
 var noCleanup bool
 var benchmark string
 var benchmarkDuration int
+var cliAffinity string
 
 var rootCmd = &cobra.Command{
 	Use:   "kubenetbench",
@@ -49,6 +50,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&runDirBase, "rundir", "r", ".", "base directory to store configuration files and results")
 	rootCmd.PersistentFlags().StringVarP(&benchmark, "benchmark", "b", "netperf", "benchmark to use")
 	rootCmd.PersistentFlags().IntVarP(&benchmarkDuration, "duration", "d", 10, "benchmark duration (sec)")
+	rootCmd.PersistentFlags().StringVar(&cliAffinity, "client-affinity", "none", "client affinity (none, same: same as server, differnt: different than server)")
 
 	rootCmd.AddCommand(nopCmd)
 	rootCmd.AddCommand(cleanCmd)
@@ -61,7 +63,14 @@ func getRunCtx() (*core.RunCtx, error) {
 	switch benchmark {
 	case "netperf":
 		netperfBench := getNetperfBench()
-		return core.NewRunCtx(runID, runDirBase, quiet, !noCleanup, netperfBench), nil
+		ctx := core.NewRunCtx(
+			runID,
+			runDirBase,
+			cliAffinity,
+			quiet,
+			!noCleanup,
+			netperfBench)
+		return ctx, nil
 
 	case "ipperf":
 		return nil, fmt.Errorf("NYI: %s", benchmark)

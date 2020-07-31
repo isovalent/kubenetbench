@@ -104,6 +104,7 @@ metadata:
   }
 spec:
   restartPolicy: Never
+  {{.cliAffinity}}
   containers:
   - {{.cliContainer}}
 `))
@@ -122,10 +123,12 @@ func (s *IntrapodSt) genCliYaml(serverIP string) (string, error) {
 		"runID":        s.Runctx.id,
 		"serverIP":     serverIP,
 		"cliContainer": "{{template \"netperfContainer\"}}",
+		"cliAffinity":  "{{template \"cliAffinity\"}}",
 	}
 
 	templates := map[string]utils.PrefixRenderer{
 		"netperfContainer": s.Runctx.benchmark.WriteCliContainerYaml,
+		"cliAffinity":      s.Runctx.cliAffinityWrite,
 	}
 
 	utils.RenderTemplate(intrapodCliTemplate, vals, templates, f)
