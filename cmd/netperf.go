@@ -7,7 +7,7 @@ import (
 var netperfTy string
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&netperfTy, "netperf-type", "tcp_rr", "netperf type benchmark")
+	rootCmd.PersistentFlags().StringVar(&netperfTy, "netperf-type", "tcp_rr", "netperf type benchmark (tcp_rr, tcp_crr, script-np-rr)")
 	// TODO: add some validation here
 }
 
@@ -19,8 +19,13 @@ func getNetperfBench() core.Benchmark {
 		cnf.Timeout = benchmarkDuration
 		return &cnf
 
-	case "np-rr":
-		cnf := core.NetperfRRConf{core.NetperfConfDefault("tcp_rr")}
+	case "tcp_crr":
+		cnf := core.NetperfRRConf{core.NetperfConfDefault("tcp_crr")}
+		cnf.Timeout = benchmarkDuration
+		return &cnf
+
+	case "script-np-rr":
+		cnf := core.NetperfRRConf{core.NetperfConfDefault("tcp_rr,tcp_crr")}
 		cnf.Timeout = benchmarkDuration
 		cnf.CliCommand = "scripts/np-rr.sh"
 		return &cnf

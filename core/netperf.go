@@ -18,7 +18,7 @@ type NetperfConf struct {
 // NetperfConfDefault returns a NetperfConf with the default values
 func NetperfConfDefault(testname string) NetperfConf {
 	return NetperfConf{
-		Timeout:    30,
+		Timeout:    60,
 		DataPort:   8000,
 		CliCommand: "netperf",
 		TestName:   testname,
@@ -68,6 +68,7 @@ func (cnf *NetperfRRConf) WriteCliContainerYaml(pw *utils.PrefixWriter, params m
 		"THROUGHPUT_UNITS",
 		"TRANSACTION_RATE",
 		"P50_LATENCY",
+		"P90_LATENCY",
 		"RT_LATENCY",
 		"MEAN_LATENCY",
 		"STDEV_LATENCY",
