@@ -25,7 +25,7 @@ func getNetperfBench() core.Benchmark {
 		return &cnf
 
 	case "script-np-rr":
-		cnf := core.NetperfRRConf{core.NetperfConfDefault("tcp_rr,tcp_crr")}
+		cnf := core.NetperfRRConf{core.NetperfConfDefault("tcp_rr,udp_rr,tcp_crr")}
 		cnf.Timeout = benchmarkDuration
 		cnf.CliCommand = "scripts/np-rr.sh"
 		return &cnf

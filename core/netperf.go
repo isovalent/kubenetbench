@@ -72,6 +72,8 @@ func (cnf *NetperfRRConf) WriteCliContainerYaml(pw *utils.PrefixWriter, params m
 		"RT_LATENCY",
 		"MEAN_LATENCY",
 		"STDEV_LATENCY",
+		"REQUEST_SIZE",
+		"RESPONSE_SIZE",
 		// "DIRECTION",
 		// "LOCAL_CPU_BIND",
 		// "REMOTE_CPU_BIND",
@@ -89,6 +91,8 @@ func (cnf *NetperfRRConf) WriteCliContainerYaml(pw *utils.PrefixWriter, params m
 	pw.AppendNewLineOrDie(fmt.Sprintf(`"-t", "%s", # testname`, cnf.TestName))
 	pw.AppendNewLineOrDie(`"--",`)
 	pw.AppendNewLineOrDie(fmt.Sprintf(`"-P", "%d", # data connection port`, cnf.DataPort))
+	// -D seems to kill the performance for high queue depths, so don't use it
+	// pw.AppendNewLineOrDie(`"-D",# no delay`)
 	pw.AppendNewLineOrDie(fmt.Sprintf(`"-k", "%s",`, strings.Join(outputFields, ",")))
 	pw.PopPrefix()
 	pw.AppendNewLineOrDie(`]`)

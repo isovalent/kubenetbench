@@ -49,7 +49,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&noCleanup, "no-cleanup", false, "do not perform cleanup (delete created k8s resources, etc.)")
 	rootCmd.PersistentFlags().StringVarP(&runDirBase, "rundir", "r", ".", "base directory to store configuration files and results")
 	rootCmd.PersistentFlags().StringVarP(&benchmark, "benchmark", "b", "netperf", "benchmark to use")
-	rootCmd.PersistentFlags().IntVarP(&benchmarkDuration, "duration", "d", 60, "benchmark duration (sec)")
+	rootCmd.PersistentFlags().IntVarP(&benchmarkDuration, "duration", "d", 30, "benchmark duration (sec)")
 	rootCmd.PersistentFlags().StringVar(&cliAffinity, "client-affinity", "none", "client affinity (none, same: same as server, differnt: different than server)")
 
 	rootCmd.AddCommand(nopCmd)
