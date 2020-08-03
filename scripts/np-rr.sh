@@ -5,9 +5,9 @@
 QD=${QD:-"1 2 4 8 16 32 64 128"}
 
 # packet (req/res) sizes
-RR_SIZES=${RR_SIZES:-"1,1"}
+RR_SIZES=${RR_SIZES:-"1,1 1,1024, 1024,1"}
 
-# RR_TESTS="tcp_rr tcp_crr"
+RR_TESTS="tcp_rr udp_rr tcp_crr "
 
 ARGS=()
 TEST_ARGS=()
@@ -35,13 +35,27 @@ done
 
 
 for rrt in ${RR_TESTS}; do
-    for qd in ${QD}; do
-        for rr_size in ${RR_SIZES}; do
-            echo netperf ${ARGS[@]} -t $rrt -- ${TEST_ARGS[@]} -r $rr_size -b $qd
-            if [ -z "$DRY_RUN" ]; then
-                 netperf ${ARGS[@]} -t $rrt -- ${TEST_ARGS[@]} -r $rr_size -b $qd
-            fi
-            echo __DONE__
-        done
-    done
+    case $rrt in
+        tcp_rr|udp_rr)
+            for qd in ${QD}; do
+                for rr_size in ${RR_SIZES}; do
+                    echo netperf ${ARGS[@]} -t $rrt -- ${TEST_ARGS[@]} -r $rr_size -b $qd
+                    if [ -z "$DRY_RUN" ]; then
+                         netperf ${ARGS[@]} -t $rrt -- ${TEST_ARGS[@]} -r $rr_size -b $qd
+                    fi
+                    echo __DONE__
+                done
+            done
+            ;;
+
+        tcp_crr)
+            for rr_size in ${RR_SIZES}; do
+                echo netperf ${ARGS[@]} -t $rrt -- ${TEST_ARGS[@]} -r $rr_size
+                if [ -z "$DRY_RUN" ]; then
+                     netperf ${ARGS[@]} -t $rrt -- ${TEST_ARGS[@]} -r $rr_size
+                fi
+                echo __DONE__
+            done
+            ;;
+    esac
 done
