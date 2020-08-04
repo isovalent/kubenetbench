@@ -90,7 +90,7 @@ func (cnf *NetperfRRConf) WriteCliContainerYaml(pw *utils.PrefixWriter, params m
 	pw.AppendNewLineOrDie(fmt.Sprintf(`"-H", "%v",`, serverIP))
 	pw.AppendNewLineOrDie(fmt.Sprintf(`"-t", "%s", # testname`, cnf.TestName))
 	pw.AppendNewLineOrDie(`"--",`)
-	pw.AppendNewLineOrDie(fmt.Sprintf(`"-P", "%d", # data connection port`, cnf.DataPort))
+	pw.AppendNewLineOrDie(fmt.Sprintf(`"-P", ",%d", # data connection port`, cnf.DataPort))
 	// -D seems to kill the performance for high queue depths, so don't use it
 	// pw.AppendNewLineOrDie(`"-D",# no delay`)
 	pw.AppendNewLineOrDie(fmt.Sprintf(`"-k", "%s",`, strings.Join(outputFields, ",")))
