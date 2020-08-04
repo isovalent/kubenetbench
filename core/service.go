@@ -91,6 +91,7 @@ metadata:
   }
 spec:
   restartPolicy: Never
+  {{.cliAffinity}}
   containers:
   - {{.cliContainer}}
 `))
