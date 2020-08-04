@@ -2,7 +2,6 @@ package core
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"time"
 )
@@ -28,11 +27,6 @@ func NewRunCtx(
 ) *RunCtx {
 	datestr := time.Now().Format("20060102-150405")
 	rundir := fmt.Sprintf("%s/%s-%s", ridDirBase, rid, datestr)
-	err := os.Mkdir(rundir, 0755)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	return &RunCtx{
 		id:          rid,
 		dir:         rundir,
@@ -41,4 +35,8 @@ func NewRunCtx(
 		cleanup:     cleanup,
 		benchmark:   benchmark,
 	}
+}
+
+func (r *RunCtx) MakeDir() error {
+	return os.Mkdir(r.dir, 0755)
 }

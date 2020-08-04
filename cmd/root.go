@@ -32,7 +32,7 @@ var cleanCmd = &cobra.Command{
 	Use:   "clean",
 	Short: "clean k8s resources",
 	Run: func(cmd *cobra.Command, args []string) {
-		runctx, err := getRunCtx()
+		runctx, err := getRunCtx(false)
 		if err != nil {
 			log.Fatal("initializing run context failed:", err)
 		}
@@ -58,7 +58,7 @@ func init() {
 	rootCmd.AddCommand(serviceCmd)
 }
 
-func getRunCtx() (*core.RunCtx, error) {
+func getRunCtx(mkdir bool) (*core.RunCtx, error) {
 
 	switch benchmark {
 	case "netperf":
@@ -70,7 +70,16 @@ func getRunCtx() (*core.RunCtx, error) {
 			quiet,
 			!noCleanup,
 			netperfBench)
-		return ctx, nil
+
+		var err error = nil
+		if mkdir {
+			err = ctx.MakeDir()
+			if err != nil {
+				ctx = nil
+			}
+		}
+
+		return ctx, err
 
 	case "ipperf":
 		return nil, fmt.Errorf("NYI: %s", benchmark)
