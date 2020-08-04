@@ -208,8 +208,11 @@ func (s IntrapodSt) Execute() error {
 			log.Printf("Client phase: %s", cliPhase)
 		}
 
-		if cliPhase == "Succeeded" || cliPhase == "Failed" {
-			break
+		if cliPhase == "Succeeded" {
+			return nil
+		}
+		if cliPhase == "Failed" {
+			return fmt.Errorf("Client execution failed")
 		}
 		time.Sleep(10 * time.Second)
 	}
