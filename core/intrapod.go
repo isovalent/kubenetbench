@@ -205,14 +205,14 @@ func (s IntrapodSt) Execute() error {
 			return err
 		}
 		if !s.Runctx.quiet {
-			log.Printf("Client phase: %s", cliPhase)
+			log.Printf("client phase: %s", cliPhase)
 		}
 
 		if cliPhase == "Succeeded" {
 			return nil
 		}
 		if cliPhase == "Failed" {
-			return fmt.Errorf("Client execution failed")
+			return fmt.Errorf("client execution failed")
 		}
 		time.Sleep(10 * time.Second)
 	}
