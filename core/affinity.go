@@ -2,12 +2,13 @@ package core
 
 import (
 	"fmt"
+	"strings"
 
 	"../utils"
 )
 
 // client on the same node as the server
-func cliAffinitySame(pw *utils.PrefixWriter, params map[string]interface{}) {
+func cliAffinitySame(pw *utils.PrefixWriter) {
 	l := func(s string) {
 		pw.AppendNewLineOrDie(s)
 	}
@@ -25,7 +26,7 @@ func cliAffinitySame(pw *utils.PrefixWriter, params map[string]interface{}) {
 }
 
 // client on the same node as the server
-func cliAffinityOther(pw *utils.PrefixWriter, params map[string]interface{}) {
+func cliAffinityOther(pw *utils.PrefixWriter) {
 	l := func(s string) {
 		pw.AppendNewLineOrDie(s)
 	}
@@ -42,16 +43,38 @@ func cliAffinityOther(pw *utils.PrefixWriter, params map[string]interface{}) {
 	l(`         topologyKey: "kubernetes.io/hostname"`)
 }
 
-// no afinity
+//
+func affinityHost(host string, pw *utils.PrefixWriter) {
+	pw.AppendNewLineOrDie(`nodeSelector:`)
+	pw.AppendNewLineOrDie(fmt.Sprintf(`     kubernetes.io/hostname: %s`, host))
+}
+
 func (c *RunCtx) cliAffinityWrite(pw *utils.PrefixWriter, params map[string]interface{}) {
-	switch c.cliAffinity {
-	case "none":
+	switch {
+	case c.cliAffinity == "none":
 		return
-	case "same":
-		cliAffinitySame(pw, params)
-	case "other":
-		cliAffinityOther(pw, params)
+	case c.cliAffinity == "same":
+		cliAffinitySame(pw)
+	case c.cliAffinity == "other":
+		cliAffinityOther(pw)
+	case strings.HasPrefix(c.cliAffinity, "host="):
+		host := strings.TrimPrefix(c.cliAffinity, "host=")
+		affinityHost(host, pw)
+
 	default:
-		panic(fmt.Sprintf("Unrecognized affinity: %s", c.cliAffinity))
+		panic(fmt.Sprintf("Unrecognized client affinity: %s", c.cliAffinity))
+	}
+}
+
+func (c *RunCtx) srvAffinityWrite(pw *utils.PrefixWriter, params map[string]interface{}) {
+	switch {
+	case c.srvAffinity == "none":
+		return
+	case strings.HasPrefix(c.srvAffinity, "host="):
+		host := strings.TrimPrefix(c.srvAffinity, "host=")
+		affinityHost(host, pw)
+
+	default:
+		panic(fmt.Sprintf("Unrecognized server affinity: %s", c.srvAffinity))
 	}
 }

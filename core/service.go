@@ -37,6 +37,7 @@ spec:
         role: srv,
       }
     spec:
+      {{.srvAffinity}}
       containers:
       - {{.srvContainer}}
 ---
@@ -61,11 +62,13 @@ func (s *ServiceSt) genSrvYaml() (string, error) {
 		"runID":        s.Runctx.id,
 		"srvContainer": "{{template \"netperfContainer\"}}",
 		"srvPorts":     "{{template \"netperfPorts\"}}",
+		"srvAffinity":  "{{template \"srvAffinity\"}}",
 	}
 
 	templates := map[string]utils.PrefixRenderer{
 		"netperfContainer": s.Runctx.benchmark.WriteSrvContainerYaml,
 		"netperfPorts":     s.Runctx.benchmark.WriteSrvPortsYaml,
+		"srvAffinity":      s.Runctx.srvAffinityWrite,
 	}
 
 	yaml := fmt.Sprintf("%s/netserv.yaml", s.Runctx.dir)

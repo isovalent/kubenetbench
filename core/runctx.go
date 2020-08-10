@@ -11,6 +11,7 @@ type RunCtx struct {
 	id          string    // id identifies the run
 	dir         string    // directory to store results/etc.
 	cliAffinity string    // client affinity
+	srvAffinity string    // server affinity
 	quiet       bool      // supress output
 	cleanup     bool      // perform cleanup: remove k8s entitites (pods, policies, etc.)
 	benchmark   Benchmark // underlying benchmark interface
@@ -21,6 +22,7 @@ func NewRunCtx(
 	rid string,
 	ridDirBase string,
 	cliAffinity string,
+	srvAffinity string,
 	quiet bool,
 	cleanup bool,
 	benchmark Benchmark,
@@ -31,6 +33,7 @@ func NewRunCtx(
 		id:          rid,
 		dir:         rundir,
 		cliAffinity: cliAffinity,
+		srvAffinity: srvAffinity,
 		quiet:       quiet,
 		cleanup:     cleanup,
 		benchmark:   benchmark,
