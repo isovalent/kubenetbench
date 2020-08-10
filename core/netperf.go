@@ -9,19 +9,23 @@ import (
 
 // NetperfConf base netperf configuration
 type NetperfConf struct {
-	Timeout    int
-	DataPort   uint16
-	TestName   string
-	CliCommand string
+	Timeout       int
+	DataPort      uint16
+	TestName      string
+	CliCommand    string
+	MoreArgs      []string
+	MoreBenchArgs []string
 }
 
 // NetperfConfDefault returns a NetperfConf with the default values
-func NetperfConfDefault(testname string) NetperfConf {
+func NetperfConfDefault(testname string, args []string, benchArgs []string) NetperfConf {
 	return NetperfConf{
-		Timeout:    60,
-		DataPort:   8000,
-		CliCommand: "netperf",
-		TestName:   testname,
+		Timeout:       60,
+		DataPort:      8000,
+		CliCommand:    "netperf",
+		TestName:      testname,
+		MoreArgs:      args,
+		MoreBenchArgs: benchArgs,
 	}
 }
 
@@ -89,11 +93,25 @@ func (cnf *NetperfRRConf) WriteCliContainerYaml(pw *utils.PrefixWriter, params m
 	pw.AppendNewLineOrDie(`"-j", # enable additional statistics`)
 	pw.AppendNewLineOrDie(fmt.Sprintf(`"-H", "%v",`, serverIP))
 	pw.AppendNewLineOrDie(fmt.Sprintf(`"-t", "%s", # testname`, cnf.TestName))
+	if len(cnf.MoreArgs) > 0 {
+		pw.AppendNewLineOrDie("# Additional args")
+		for _, arg := range cnf.MoreArgs {
+			pw.AppendNewLineOrDie(fmt.Sprintf(`"%s",`, arg))
+		}
+	}
+
 	pw.AppendNewLineOrDie(`"--",`)
+	pw.AppendNewLineOrDie("# Benchmark args")
 	pw.AppendNewLineOrDie(fmt.Sprintf(`"-P", ",%d", # data connection port`, cnf.DataPort))
 	// -D seems to kill the performance for high queue depths, so don't use it
 	// pw.AppendNewLineOrDie(`"-D",# no delay`)
 	pw.AppendNewLineOrDie(fmt.Sprintf(`"-k", "%s",`, strings.Join(outputFields, ",")))
+	if len(cnf.MoreBenchArgs) > 0 {
+		pw.AppendNewLineOrDie("# Additional test-specific args")
+		for _, arg := range cnf.MoreBenchArgs {
+			pw.AppendNewLineOrDie(fmt.Sprintf(`"%s",`, arg))
+		}
+	}
 	pw.PopPrefix()
 	pw.AppendNewLineOrDie(`]`)
 }

@@ -48,3 +48,10 @@ The results of the run can be found in the  `./foo-20200810-112332` directory.
 Specifically, `./foo-20200810-112332/cli.log` contains the output of the netperf
 command.
 
+
+
+It is also possible to pass arbitrary arguments to the netperf benchmark using
+`--netperf-args` and `--netperf-bench-args`. For example:
+```
+./kubenetbench pod2pod --runid foo --benchmark netperf --netperf-args "-D" --netperf-args "10" --netperf-bench-args "-r" --netperf-bench-args "1,1" --netperf-bench-args "-b" --netperf-bench-args "10"
+```
