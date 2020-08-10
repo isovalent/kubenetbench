@@ -273,7 +273,7 @@ function eth_irqs() {
 			echo "Cannot locate virtio device for interface $iface"
 			exit 1
 		fi
-		x="$virtio_dev-(input|output).(\d+)"
+		x="$virtio_dev-(?:input|output).(\d+)"
 		;;
 	*)
 		echo "Unknown driver: $driver. Baling out." 1>&2
