@@ -4,7 +4,7 @@
 set -e
 
 # queue depth: packets in flight
-QD=${QD:-"1 2 4 8 16 32 64 128"}
+QD=${QD:-"0 1 2 4 8 16 32 64 128"}
 
 # packet (req/res) sizes
 RR_SIZES=${RR_SIZES:-"1,1 1,1024, 1024,1"}
