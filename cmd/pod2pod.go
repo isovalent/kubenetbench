@@ -10,8 +10,8 @@ import (
 
 var policyArg string
 
-var intrapodCmd = &cobra.Command{
-	Use:   "intrapod",
+var pod2podCmd = &cobra.Command{
+	Use:   "pod2pod",
 	Short: "pod-to-pod network benchmark",
 	Run: func(cmd *cobra.Command, args []string) {
 		if policyArg != "" && policyArg != "port" {
@@ -22,17 +22,17 @@ var intrapodCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal("initializing run context failed:", err)
 		}
-		st := core.IntrapodSt{
+		st := core.Pod2PodSt{
 			Runctx: runctx,
 			Policy: policyArg,
 		}
 		err = st.Execute()
 		if err != nil {
-			log.Fatal("intrapod execution failed:", err)
+			log.Fatal("pod2pod execution failed:", err)
 		}
 	},
 }
 
 func init() {
-	intrapodCmd.Flags().StringVar(&policyArg, "policy", "", "isolation policy (empty or \"port\")")
+	pod2podCmd.Flags().StringVar(&policyArg, "policy", "", "isolation policy (empty or \"port\")")
 }

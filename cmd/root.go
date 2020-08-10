@@ -54,7 +54,7 @@ func init() {
 
 	rootCmd.AddCommand(nopCmd)
 	rootCmd.AddCommand(cleanCmd)
-	rootCmd.AddCommand(intrapodCmd)
+	rootCmd.AddCommand(pod2podCmd)
 	rootCmd.AddCommand(serviceCmd)
 }
 

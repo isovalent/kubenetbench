@@ -10,13 +10,13 @@ import (
 	"../utils"
 )
 
-// IntrapodSt is the necessary state for executing an intrapod (pod-to-pod) benchmark
-type IntrapodSt struct {
+// Pod2PodSt is the necessary state for executing an pod-to-pod benchmark
+type Pod2PodSt struct {
 	Runctx *RunCtx
 	Policy string
 }
 
-var intrapodSrvTemplate = template.Must(template.New("srv").Parse(`apiVersion: v1
+var pod2podSrvTemplate = template.Must(template.New("srv").Parse(`apiVersion: v1
 kind: Pod
 metadata:
   name: kubenetbench-{{.runID}}-srv
@@ -29,7 +29,7 @@ spec:
   - {{.srvContainer}}
 `))
 
-func (s *IntrapodSt) genSrvYaml() (string, error) {
+func (s *Pod2PodSt) genSrvYaml() (string, error) {
 	vals := map[string]interface{}{
 		"runID":        s.Runctx.id,
 		"srvContainer": "{{template \"netperfContainer\"}}",
@@ -47,12 +47,12 @@ func (s *IntrapodSt) genSrvYaml() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	utils.RenderTemplate(intrapodSrvTemplate, vals, templates, f)
+	utils.RenderTemplate(pod2podSrvTemplate, vals, templates, f)
 	f.Close()
 	return yaml, nil
 }
 
-var intrapodPortPolicyTemplate = template.Must(template.New("policy").Parse(`apiVersion: networking.k8s.io/v1
+var pod2podPortPolicyTemplate = template.Must(template.New("policy").Parse(`apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: kubenetbench-{{.runID}}-policy
@@ -76,7 +76,7 @@ spec:
       port: {{.dataPort}}
 `))
 
-func (s *IntrapodSt) genPortPolicyYaml() string {
+func (s *Pod2PodSt) genPortPolicyYaml() string {
 	m := map[string]interface{}{
 		"runID": s.Runctx.id,
 	}
@@ -89,12 +89,12 @@ func (s *IntrapodSt) genPortPolicyYaml() string {
 	if err != nil {
 		log.Fatal(err)
 	}
-	intrapodPortPolicyTemplate.Execute(f, m)
+	pod2podPortPolicyTemplate.Execute(f, m)
 	f.Close()
 	return yaml
 }
 
-var intrapodCliTemplate = template.Must(template.New("cli").Parse(`apiVersion: v1
+var pod2podCliTemplate = template.Must(template.New("cli").Parse(`apiVersion: v1
 kind: Pod
 metadata:
   name: kubenetbench-{{.runID}}-cli
@@ -109,7 +109,7 @@ spec:
   - {{.cliContainer}}
 `))
 
-func (s *IntrapodSt) genCliYaml(serverIP string) (string, error) {
+func (s *Pod2PodSt) genCliYaml(serverIP string) (string, error) {
 	yaml := fmt.Sprintf("%s/client.yaml", s.Runctx.dir)
 	if !s.Runctx.quiet {
 		log.Printf("Generating %s", yaml)
@@ -131,13 +131,13 @@ func (s *IntrapodSt) genCliYaml(serverIP string) (string, error) {
 		"cliAffinity":      s.Runctx.cliAffinityWrite,
 	}
 
-	utils.RenderTemplate(intrapodCliTemplate, vals, templates, f)
+	utils.RenderTemplate(pod2podCliTemplate, vals, templates, f)
 	f.Close()
 	return yaml, nil
 }
 
-// Execute intrapod command
-func (s IntrapodSt) Execute() error {
+// Execute pod2pod command
+func (s Pod2PodSt) Execute() error {
 	// start server pod (netserver)
 	srvYamlFname, err := s.genSrvYaml()
 	if err != nil {
