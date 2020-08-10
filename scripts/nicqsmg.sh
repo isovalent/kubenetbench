@@ -256,9 +256,25 @@ function eth_irqs() {
 
 	case $driver in
         ixgbe)
-		x="$iface-TxRx-(\d+)" ;;
+		x="$iface-TxRx-(\d+)"
+		;;
+
 	sfc)
-		x="$iface-(\d+)" ;;
+		x="$iface-(\d+)"
+		;;
+
+	virtio_net)
+		for devpath in /sys/module/virtio_net/drivers/virtio:virtio_net/virtio*; do
+			if [ -d $devpath/net/$iface ]; then
+				virtio_dev=$(basename $devpath)
+			fi
+		done
+		if [ -z "$virtio_dev" ]; then
+			echo "Cannot locate virtio device for interface $iface"
+			exit 1
+		fi
+		x="$virtio_dev-(input|output).(\d+)"
+		;;
 	*)
 		echo "Unknown driver: $driver. Baling out." 1>&2
 		exit 1 ;;
@@ -278,7 +294,7 @@ function eth_irq_cpus_rr() {
 function eth_irq_pr() {
     eth_irqs |  while read irq qname q;
     do
-        printf "irq:%3s %13s affinity:%4s\n" $irq $qname $(cat /proc/irq/$irq/smp_affinity_list)
+        printf "irq:%-3s dev:%-20s affinity:%3d\n" $irq $qname $(cat /proc/irq/$irq/smp_affinity_list)
     done
 }
 
