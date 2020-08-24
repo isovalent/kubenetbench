@@ -2,8 +2,12 @@ package core
 
 import (
 	"fmt"
+	"log"
 	"os"
+	"text/template"
 	"time"
+
+	"../utils"
 )
 
 // RunCtx is the context for a benchmark run
@@ -42,4 +46,46 @@ func NewRunCtx(
 
 func (r *RunCtx) MakeDir() error {
 	return os.Mkdir(r.dir, 0755)
+}
+
+var runctxCliTemplate = template.Must(template.New("cli").Parse(`apiVersion: v1
+kind: Pod
+metadata:
+  name: kubenetbench-{{.runID}}-cli
+  labels : {
+     kubenetbench-runid: {{.runID}},
+     role: cli,
+  }
+spec:
+  restartPolicy: Never
+  {{.cliAffinity}}
+  containers:
+  - {{.cliContainer}}
+`))
+
+func (r *RunCtx) genCliYaml(serverIP string) (string, error) {
+	yaml := fmt.Sprintf("%s/client.yaml", r.dir)
+	if !r.quiet {
+		log.Printf("Generating %s", yaml)
+	}
+	f, err := os.Create(yaml)
+	if err != nil {
+		return "", err
+	}
+
+	vals := map[string]interface{}{
+		"runID":        r.id,
+		"serverIP":     serverIP,
+		"cliContainer": "{{template \"netperfContainer\"}}",
+		"cliAffinity":  "{{template \"cliAffinity\"}}",
+	}
+
+	templates := map[string]utils.PrefixRenderer{
+		"netperfContainer": r.benchmark.WriteCliContainerYaml,
+		"cliAffinity":      r.cliAffinityWrite,
+	}
+
+	utils.RenderTemplate(runctxCliTemplate, vals, templates, f)
+	f.Close()
+	return yaml, nil
 }

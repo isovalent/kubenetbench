@@ -84,46 +84,8 @@ func (s *ServiceSt) genSrvYaml() (string, error) {
 	return yaml, nil
 }
 
-var serviceCliTemplate = template.Must(template.New("cli").Parse(`apiVersion: v1
-kind: Pod
-metadata:
-  name: kubenetbench-{{.runID}}-cli
-  labels : {
-     kubenetbench-runid: {{.runID}},
-     role: cli,
-  }
-spec:
-  restartPolicy: Never
-  {{.cliAffinity}}
-  containers:
-  - {{.cliContainer}}
-`))
-
 func (s *ServiceSt) genCliYaml(serverIP string) (string, error) {
-	yaml := fmt.Sprintf("%s/client.yaml", s.Runctx.dir)
-	if !s.Runctx.quiet {
-		log.Printf("Generating %s", yaml)
-	}
-	f, err := os.Create(yaml)
-	if err != nil {
-		return "", err
-	}
-
-	vals := map[string]interface{}{
-		"runID":        s.Runctx.id,
-		"serverIP":     serverIP,
-		"cliContainer": "{{template \"netperfContainer\"}}",
-		"cliAffinity":  "{{template \"cliAffinity\"}}",
-	}
-
-	templates := map[string]utils.PrefixRenderer{
-		"netperfContainer": s.Runctx.benchmark.WriteCliContainerYaml,
-		"cliAffinity":      s.Runctx.cliAffinityWrite,
-	}
-
-	utils.RenderTemplate(serviceCliTemplate, vals, templates, f)
-	f.Close()
-	return yaml, nil
+	return s.Runctx.genCliYaml(serverIP)
 }
 
 // Execute service run
