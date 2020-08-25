@@ -1,6 +1,8 @@
 
 Kubenetbench is a utility for benchmarking kubernetes networking.
 
+**Text below is outdated**
+
 # Build
 
 

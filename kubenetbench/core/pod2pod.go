@@ -7,13 +7,13 @@ import (
 	"text/template"
 	"time"
 
-	"../utils"
+	"github.com/kkourt/kubenetbench/utils"
 )
 
 // Pod2PodSt is the necessary state for executing an pod-to-pod benchmark
 type Pod2PodSt struct {
-	Runctx *RunCtx
-	Policy string
+	RunBenchCtx *RunBenchCtx
+	Policy      string
 }
 
 var pod2podSrvTemplate = template.Must(template.New("srv").Parse(`apiVersion: v1
@@ -21,7 +21,8 @@ kind: Pod
 metadata:
   name: kubenetbench-{{.runID}}-srv
   labels : {
-    kubenetbench-runid: {{.runID}},
+    knb-sess: {{.sessID}},
+    knb-runid: {{.runID}},
     role: srv,
   }
 spec:
@@ -32,20 +33,19 @@ spec:
 
 func (s *Pod2PodSt) genSrvYaml() (string, error) {
 	vals := map[string]interface{}{
-		"runID":        s.Runctx.id,
+		"sessID":       s.RunBenchCtx.session.id,
+		"runID":        s.RunBenchCtx.runid,
 		"srvContainer": "{{template \"netperfContainer\"}}",
 		"srvAffinity":  "{{template \"srvAffinity\"}}",
 	}
 
 	templates := map[string]utils.PrefixRenderer{
-		"netperfContainer": s.Runctx.benchmark.WriteSrvContainerYaml,
-		"srvAffinity":      s.Runctx.srvAffinityWrite,
+		"netperfContainer": s.RunBenchCtx.benchmark.WriteSrvContainerYaml,
+		"srvAffinity":      s.RunBenchCtx.srvAffinityWrite,
 	}
 
-	yaml := fmt.Sprintf("%s/netserv.yaml", s.Runctx.dir)
-	if !s.Runctx.quiet {
-		log.Printf("Generating %s", yaml)
-	}
+	yaml := fmt.Sprintf("%s/netserv.yaml", s.RunBenchCtx.getDir())
+	log.Printf("Generating %s", yaml)
 	f, err := os.Create(yaml)
 	if err != nil {
 		return "", err
@@ -81,13 +81,11 @@ spec:
 
 func (s *Pod2PodSt) genPortPolicyYaml() string {
 	m := map[string]interface{}{
-		"runID": s.Runctx.id,
+		"runID": s.RunBenchCtx.runid,
 	}
 
-	yaml := fmt.Sprintf("%s/port-policy.yaml", s.Runctx.dir)
-	if !s.Runctx.quiet {
-		log.Printf("Generating %s", yaml)
-	}
+	yaml := fmt.Sprintf("%s/port-policy.yaml", s.RunBenchCtx.getDir())
+	log.Printf("Generating %s", yaml)
 	f, err := os.Create(yaml)
 	if err != nil {
 		log.Fatal(err)
@@ -98,7 +96,7 @@ func (s *Pod2PodSt) genPortPolicyYaml() string {
 }
 
 func (s *Pod2PodSt) genCliYaml(serverIP string) (string, error) {
-	return s.Runctx.genCliYaml(serverIP)
+	return s.RunBenchCtx.genCliYaml(serverIP)
 }
 
 // Execute pod2pod command
@@ -109,37 +107,35 @@ func (s Pod2PodSt) Execute() error {
 		return err
 	}
 
-	err = s.Runctx.KubeApply(srvYamlFname)
+	err = s.RunBenchCtx.KubeApply(srvYamlFname)
 	if err != nil {
 		return err
 	}
 
-	srvSelector := fmt.Sprintf("kubenetbench-runid=%s,role=srv", s.Runctx.id)
+	srvSelector := fmt.Sprintf("%s,role=srv", s.RunBenchCtx.getRunLabel("="))
 
 	defer func() {
 		// attempt to save server logs
-		s.Runctx.KubeSaveLogs(srvSelector, fmt.Sprintf("%s/srv.log", s.Runctx.dir))
+		s.RunBenchCtx.KubeSaveLogs(srvSelector, fmt.Sprintf("%s/srv.log", s.RunBenchCtx.getDir()))
 
 		// FIXME: this does not work because we call functions that
 		// call log.Fatal() which calls exit() which does not run the
 		// deferred operations
-		s.Runctx.KubeCleanup()
+		s.RunBenchCtx.KubeCleanup()
 	}()
 
 	// get server pod IP
 	time.Sleep(2 * time.Second)
-	srvIP, err := s.Runctx.KubeGetPodIP(srvSelector, 10, 2*time.Second)
+	srvIP, err := s.RunBenchCtx.KubeGetPodIP(srvSelector, 10, 2*time.Second)
 	if err != nil {
 		return err
 	}
-	if !s.Runctx.quiet {
-		log.Printf("server_ip=%s", srvIP)
-	}
+	log.Printf("server_ip=%s", srvIP)
 
 	// start policy if specified
 	if s.Policy == "port" {
 		policyYamlFname := s.genPortPolicyYaml()
-		err := s.Runctx.KubeApply(policyYamlFname)
+		err := s.RunBenchCtx.KubeApply(policyYamlFname)
 		if err != nil {
 			return fmt.Errorf("failed to apply policy: %w", err)
 		}
@@ -151,27 +147,25 @@ func (s Pod2PodSt) Execute() error {
 		return err
 	}
 
-	err = s.Runctx.KubeApply(cliYamlFname)
+	err = s.RunBenchCtx.KubeApply(cliYamlFname)
 	if err != nil {
 		return fmt.Errorf("failed to initiate client: %w", err)
 	}
 
-	cliSelector := fmt.Sprintf("kubenetbench-runid=%s,role=cli", s.Runctx.id)
+	cliSelector := fmt.Sprintf("%s,role=cli", s.RunBenchCtx.getRunLabel("="))
 	// attempt to save client logs
-	defer s.Runctx.KubeSaveLogs(cliSelector, fmt.Sprintf("%s/cli.log", s.Runctx.dir))
+	defer s.RunBenchCtx.KubeSaveLogs(cliSelector, fmt.Sprintf("%s/cli.log", s.RunBenchCtx.getDir()))
 
 	// sleep the duration of the benchmark plus 10s
-	time.Sleep(time.Duration(10+s.Runctx.benchmark.GetTimeout()) * time.Second)
+	time.Sleep(time.Duration(10+s.RunBenchCtx.benchmark.GetTimeout()) * time.Second)
 
 	var cliPhase string
 	for {
-		cliPhase, err = s.Runctx.KubeGetPodPhase(cliSelector)
+		cliPhase, err = s.RunBenchCtx.KubeGetPodPhase(cliSelector)
 		if err != nil {
 			return err
 		}
-		if !s.Runctx.quiet {
-			log.Printf("client phase: %s", cliPhase)
-		}
+		log.Printf("client phase: %s", cliPhase)
 
 		if cliPhase == "Succeeded" {
 			return nil

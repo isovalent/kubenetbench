@@ -1,7 +1,7 @@
 package core
 
 import (
-	"../utils"
+	"github.com/kkourt/kubenetbench/utils"
 )
 
 // Benchmark interface

@@ -5,11 +5,11 @@ import (
 	"log"
 	"time"
 
-	"../utils"
+	"github.com/kkourt/kubenetbench/utils"
 )
 
 // KubeGetPodIP returns the IP address of a pod using a proper selector
-func (c *RunCtx) KubeGetPodIP(
+func (c *RunBenchCtx) KubeGetPodIP(
 	selector string,
 	retries uint,
 	st time.Duration,
@@ -21,9 +21,7 @@ func (c *RunCtx) KubeGetPodIP(
 		selector,
 	)
 	for {
-		if !c.quiet {
-			log.Printf("$ %s # (remaining retries: %d)", cmd, retries)
-		}
+		log.Printf("$ %s # (remaining retries: %d)", cmd, retries)
 		lines, err := utils.ExecCmdLines(cmd)
 		if err == nil && len(lines) == 1 && lines[0] != "<none>" {
 			return lines[0], nil
@@ -39,7 +37,7 @@ func (c *RunCtx) KubeGetPodIP(
 }
 
 // KubeGetPodPhase returns the phase of a pod
-func (c *RunCtx) KubeGetPodPhase(selector string) (string, error) {
+func (c *RunBenchCtx) KubeGetPodPhase(selector string) (string, error) {
 	cmd := fmt.Sprintf(
 		"kubectl get pod -l \"%s\" -o custom-columns=Status:.status.phase --no-headers",
 		selector,
@@ -59,7 +57,7 @@ func (c *RunCtx) KubeGetPodPhase(selector string) (string, error) {
 }
 
 // KubeGetPodName returns the name of a pod
-func (c *RunCtx) KubeGetPodName(selector string) (string, error) {
+func (c *RunBenchCtx) KubeGetPodName(selector string) (string, error) {
 	cmd := fmt.Sprintf(
 		`kubectl get pod -l "%s"  -o custom-columns=Name:.metadata.name --no-headers`,
 		selector,
@@ -80,21 +78,19 @@ func (c *RunCtx) KubeGetPodName(selector string) (string, error) {
 
 // KubeSaveLogs saves logs using a selector
 // NB: for whaterver reason, kubecutl logs -l ??? truncates the logs
-func (c *RunCtx) KubeSaveLogs(selector string, logfile string) error {
+func (c *RunBenchCtx) KubeSaveLogs(selector string, logfile string) error {
 	podname, err := c.KubeGetPodName(selector)
 	if err != nil {
 		return fmt.Errorf("Failed to get pod name: %w", err)
 	}
 	argcmd := fmt.Sprintf(`kubectl logs %s > %s`, podname, logfile)
-	if !c.quiet {
-		log.Printf("$ %s ", argcmd)
-	}
+	log.Printf("$ %s ", argcmd)
 	return utils.ExecCmd(argcmd)
 }
 
 // KubeGetServiceIP returns the ip of a service
 // NB: probably a better option to use DNS
-func (c *RunCtx) KubeGetServiceIP(
+func (c *RunBenchCtx) KubeGetServiceIP(
 	selector string,
 	retries uint,
 	st time.Duration,
@@ -107,9 +103,7 @@ func (c *RunCtx) KubeGetServiceIP(
 	)
 
 	for {
-		if !c.quiet {
-			log.Printf("$ %s # (remaining retries: %d)", cmd, retries)
-		}
+		log.Printf("$ %s # (remaining retries: %d)", cmd, retries)
 		lines, err := utils.ExecCmdLines(cmd)
 		if err == nil && len(lines) == 1 && lines[0] != "<none>" {
 			return lines[0], nil
@@ -125,24 +119,20 @@ func (c *RunCtx) KubeGetServiceIP(
 }
 
 // KubeApply calls kubectl apply -f
-func (c *RunCtx) KubeApply(fname string) error {
+func (c *RunBenchCtx) KubeApply(fname string) error {
 	cmd := fmt.Sprintf("kubectl apply -f %s", fname)
-	if !c.quiet {
-		log.Printf("$ %s ", cmd)
-	}
+	log.Printf("$ %s ", cmd)
 	return utils.ExecCmd(cmd)
 }
 
 // KubeCleanup deletes pods and networkpolicies from our run
-func (c *RunCtx) KubeCleanup() error {
-	cmd := fmt.Sprintf("kubectl delete pod,deployment,service,networkpolicy -l \"kubenetbench-runid=%s\"", c.id)
-	if !c.quiet {
-		log.Printf("$ %s ", cmd)
-	}
+func (c *RunBenchCtx) KubeCleanup() error {
+	cmd := fmt.Sprintf("kubectl delete pod,deployment,service,networkpolicy -l \"knb-runid=%s\"", c.runid)
+	log.Printf("$ %s ", cmd)
 
 	if c.cleanup {
 		return utils.ExecCmd(cmd)
-	} else if !c.quiet {
+	} else {
 		log.Printf("Cleanup disabled")
 	}
 

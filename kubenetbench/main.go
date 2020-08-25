@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"./cmd"
+	"github.com/kkourt/kubenetbench/kubenetbench/cmd"
 )
 
 func main() {

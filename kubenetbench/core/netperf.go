@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"../utils"
+	"github.com/kkourt/kubenetbench/utils"
 )
 
 // NetperfConf base netperf configuration

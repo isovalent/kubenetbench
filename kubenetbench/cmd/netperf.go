@@ -1,7 +1,9 @@
 package cmd
 
 import (
-	"../core"
+	"github.com/spf13/cobra"
+
+	"github.com/kkourt/kubenetbench/kubenetbench/core"
 )
 
 var netperfTy string
@@ -9,10 +11,13 @@ var netperfArgs []string
 var netperfBenchArgs []string
 
 func init() {
+}
+
+func addNetperfFlags(cmd *cobra.Command) {
 	// TODO: add some validation here
-	rootCmd.PersistentFlags().StringVar(&netperfTy, "netperf-type", "tcp_rr", "netperf type benchmark (tcp_rr, tcp_crr, script-np-rr)")
-	rootCmd.PersistentFlags().StringArrayVar(&netperfArgs, "netperf-args", []string{}, "netperf arguments")
-	rootCmd.PersistentFlags().StringArrayVar(&netperfBenchArgs, "netperf-bench-args", []string{}, "netperf benchmark arguments (after --)")
+	cmd.Flags().StringVar(&netperfTy, "netperf-type", "tcp_rr", "netperf type benchmark (tcp_rr, tcp_crr, script-np-rr)")
+	cmd.Flags().StringArrayVar(&netperfArgs, "netperf-args", []string{}, "netperf arguments")
+	cmd.Flags().StringArrayVar(&netperfBenchArgs, "netperf-bench-args", []string{}, "netperf benchmark arguments (after --)")
 }
 
 // TODO: parse options to support other netperf configurations here

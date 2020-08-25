@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"../utils"
+	"github.com/kkourt/kubenetbench/utils"
 )
 
 // client on the same node as the server
@@ -49,7 +49,7 @@ func affinityHost(host string, pw *utils.PrefixWriter) {
 	pw.AppendNewLineOrDie(fmt.Sprintf(`     kubernetes.io/hostname: %s`, host))
 }
 
-func (c *RunCtx) cliAffinityWrite(pw *utils.PrefixWriter, params map[string]interface{}) {
+func (c *RunBenchCtx) cliAffinityWrite(pw *utils.PrefixWriter, params map[string]interface{}) {
 	switch {
 	case c.cliAffinity == "none":
 		return
@@ -66,7 +66,7 @@ func (c *RunCtx) cliAffinityWrite(pw *utils.PrefixWriter, params map[string]inte
 	}
 }
 
-func (c *RunCtx) srvAffinityWrite(pw *utils.PrefixWriter, params map[string]interface{}) {
+func (c *RunBenchCtx) srvAffinityWrite(pw *utils.PrefixWriter, params map[string]interface{}) {
 	switch {
 	case c.srvAffinity == "none":
 		return

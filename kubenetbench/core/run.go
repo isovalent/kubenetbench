@@ -7,53 +7,58 @@ import (
 	"text/template"
 	"time"
 
-	"../utils"
+	"github.com/kkourt/kubenetbench/utils"
 )
 
-// RunCtx is the context for a benchmark run
-type RunCtx struct {
-	id          string    // id identifies the run
-	dir         string    // directory to store results/etc.
+// RunBenchCtx is the context for a benchmark run
+type RunBenchCtx struct {
+	session     *Session  // session
+	runid       string    //
 	cliAffinity string    // client affinity
 	srvAffinity string    // server affinity
-	quiet       bool      // supress output
 	cleanup     bool      // perform cleanup: remove k8s entitites (pods, policies, etc.)
 	benchmark   Benchmark // underlying benchmark interface
 }
 
-// NewRunCtx creates a new RunCtx
-func NewRunCtx(
-	rid string,
-	ridDirBase string,
+func NewRunBenchCtx(
+	sess *Session,
+	runLabel string,
 	cliAffinity string,
 	srvAffinity string,
-	quiet bool,
 	cleanup bool,
 	benchmark Benchmark,
-) *RunCtx {
+) *RunBenchCtx {
 	datestr := time.Now().Format("20060102-150405")
-	rundir := fmt.Sprintf("%s/%s-%s", ridDirBase, rid, datestr)
-	return &RunCtx{
-		id:          rid,
-		dir:         rundir,
+	runid := fmt.Sprintf("%s-%s", runLabel, datestr)
+	return &RunBenchCtx{
+		session:     sess,
+		runid:       runid,
 		cliAffinity: cliAffinity,
 		srvAffinity: srvAffinity,
-		quiet:       quiet,
 		cleanup:     cleanup,
 		benchmark:   benchmark,
 	}
 }
 
-func (r *RunCtx) MakeDir() error {
-	return os.Mkdir(r.dir, 0755)
+func (r *RunBenchCtx) getRunLabel(sep string) string {
+	return fmt.Sprintf("%s%s%s", runIdLabel, sep, r.runid)
+}
+
+func (r *RunBenchCtx) getDir() string {
+	return fmt.Sprintf("%s/%s", r.session.dir, r.runid)
+}
+
+func (r *RunBenchCtx) MakeDir() error {
+	d := r.getDir()
+	return os.Mkdir(d, 0755)
 }
 
 var runctxCliTemplate = template.Must(template.New("cli").Parse(`apiVersion: v1
 kind: Pod
 metadata:
-  name: kubenetbench-{{.runID}}-cli
+  name: knb-cli
   labels : {
-     kubenetbench-runid: {{.runID}},
+     {{.runLabel}},
      role: cli,
   }
 spec:
@@ -63,18 +68,16 @@ spec:
   - {{.cliContainer}}
 `))
 
-func (r *RunCtx) genCliYaml(serverIP string) (string, error) {
-	yaml := fmt.Sprintf("%s/client.yaml", r.dir)
-	if !r.quiet {
-		log.Printf("Generating %s", yaml)
-	}
+func (r *RunBenchCtx) genCliYaml(serverIP string) (string, error) {
+	yaml := fmt.Sprintf("%s/client.yaml", r.getDir())
+	log.Printf("Generating %s", yaml)
 	f, err := os.Create(yaml)
 	if err != nil {
 		return "", err
 	}
 
 	vals := map[string]interface{}{
-		"runID":        r.id,
+		"runLabel":     r.getRunLabel(": "),
 		"serverIP":     serverIP,
 		"cliContainer": "{{template \"netperfContainer\"}}",
 		"cliAffinity":  "{{template \"cliAffinity\"}}",
