@@ -55,7 +55,7 @@ func (c *RunBenchCtx) cliAffinityWrite(pw *utils.PrefixWriter, params map[string
 		return
 	case c.cliAffinity == "same":
 		cliAffinitySame(pw)
-	case c.cliAffinity == "other":
+	case c.cliAffinity == "different":
 		cliAffinityOther(pw)
 	case strings.HasPrefix(c.cliAffinity, "host="):
 		host := strings.TrimPrefix(c.cliAffinity, "host=")
