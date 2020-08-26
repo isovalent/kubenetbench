@@ -134,6 +134,18 @@ $ test/knb pod2pod --collect-perf
 Note that in this case the pods where scheduled on the same node. The perf
 tarball is created using `perf archive` so it also contains debugging symbols.
 
+## Stopping the monitor
+
+To stop the monitor, terminate the session:
+
+```
+$ ./test/knb done
+2020/08/26 17:24:23 ****** /home/kkourt/go/src/github.com/kkourt/kubenetbench/kubenetbench/kubenetbench --session-id test --session-base-dir . done
+2020/08/26 17:24:23 Starting session monitor
+2020/08/26 17:24:23 $ kubectl delete daemonset -l "knb-sessid=test"
+```
+
+
 # Implementation notes
 
 * kubenetbench talks to the monitor via GRPC

@@ -207,6 +207,13 @@ func (c *RunBenchCtx) KubeCleanup() error {
 	return nil
 }
 
+// deletes the monitor
+func (s *Session) KubeCleanup() error {
+	cmd := fmt.Sprintf("kubectl delete daemonset -l \"%s\"", s.getSessionLabel("="))
+	log.Printf("$ %s ", cmd)
+	return utils.ExecCmd(cmd)
+}
+
 func KubeGetNodes() ([]string, error) {
 	cmd := "kubectl get nodes -o custom-columns=Name:'.metadata.name' --no-headers"
 	lines, err := utils.ExecCmdLines(cmd)

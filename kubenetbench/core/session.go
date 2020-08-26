@@ -109,3 +109,7 @@ func (s *Session) StartMonitor() error {
 
 	return s.KubeApply(monitorYamlFname)
 }
+
+func (s *Session) StopMonitor() error {
+	return s.KubeCleanup()
+}

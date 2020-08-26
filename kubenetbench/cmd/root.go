@@ -47,14 +47,28 @@ var initCmd = &cobra.Command{
 	},
 }
 
+var doneCmd = &cobra.Command{
+	Use:   "done",
+	Short: "terminate the seasson (kill the monitor)",
+	Run: func(cmd *cobra.Command, args []string) {
+		sess := getSession()
+		log.Printf("Starting session monitor")
+		err := sess.StopMonitor()
+		if err != nil {
+			log.Fatal(fmt.Errorf("failed to stop monitor: %w", err))
+		}
+	},
+}
+
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&sessID, "session-id", "s", "", "session id")
 	rootCmd.MarkPersistentFlagRequired("session-id")
 	rootCmd.PersistentFlags().StringVarP(&sessDirBase, "session-base-dir", "d", ".", "base directory to store session data")
 	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "quiet output")
 
-	// misc commands
+	// session commands
 	rootCmd.AddCommand(initCmd)
+	rootCmd.AddCommand(doneCmd)
 
 	// benchmark commands
 	rootCmd.AddCommand(pod2podCmd)
