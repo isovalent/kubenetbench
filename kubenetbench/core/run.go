@@ -12,12 +12,14 @@ import (
 
 // RunBenchCtx is the context for a benchmark run
 type RunBenchCtx struct {
-	session     *Session  // session
-	runid       string    //
-	cliAffinity string    // client affinity
-	srvAffinity string    // server affinity
-	cleanup     bool      // perform cleanup: remove k8s entitites (pods, policies, etc.)
-	benchmark   Benchmark // underlying benchmark interface
+	session      *Session  // session
+	runid        string    //
+	cliAffinity  string    // client affinity
+	srvAffinity  string    // server affinity
+	cleanup      bool      // perform cleanup: remove k8s entitites (pods, policies, etc.)
+	benchmark    Benchmark // underlying benchmark interface
+	collectPerf  bool      // collect perf results
+	collectNodes []string
 }
 
 func NewRunBenchCtx(
@@ -27,8 +29,9 @@ func NewRunBenchCtx(
 	srvAffinity string,
 	cleanup bool,
 	benchmark Benchmark,
+	collectPerf bool,
 ) *RunBenchCtx {
-	datestr := time.Now().Format("20060102-150405")
+	datestr := time.Now().Format("20060102150405")
 	runid := fmt.Sprintf("%s-%s", runLabel, datestr)
 	return &RunBenchCtx{
 		session:     sess,
@@ -37,6 +40,7 @@ func NewRunBenchCtx(
 		srvAffinity: srvAffinity,
 		cleanup:     cleanup,
 		benchmark:   benchmark,
+		collectPerf: collectPerf,
 	}
 }
 
@@ -91,4 +95,49 @@ func (r *RunBenchCtx) genCliYaml(serverIP string) (string, error) {
 	utils.RenderTemplate(runctxCliTemplate, vals, templates, f)
 	f.Close()
 	return yaml, nil
+}
+
+// NB: limitation: we assume that there is only a single client.
+func (r *RunBenchCtx) waitForClient() error {
+	cliSelector := fmt.Sprintf("%s,role=cli", r.getRunLabel("="))
+	for {
+		cliPhase, err := r.KubeGetPodPhase(cliSelector)
+		if err != nil {
+			return err
+		}
+		log.Printf("client phase: %s", cliPhase)
+
+		if cliPhase == "Succeeded" {
+			return nil
+		}
+		if cliPhase == "Failed" {
+			return fmt.Errorf("client execution failed")
+		}
+		time.Sleep(10 * time.Second)
+	}
+}
+
+func (r *RunBenchCtx) finalizeAndWait() error {
+
+	// Wait until things settle down.
+	// We might want something more precise here eventually
+	time.Sleep(time.Duration(5 * time.Second))
+
+	// print pods
+
+	if r.collectPerf {
+		r.startCollection()
+	}
+
+	// sleep the duration of the benchmark
+	time.Sleep(time.Duration(r.benchmark.GetTimeout()) * time.Second)
+
+	// start wait loop
+	err := r.waitForClient()
+
+	if r.collectPerf {
+		r.endCollection()
+	}
+
+	return err
 }

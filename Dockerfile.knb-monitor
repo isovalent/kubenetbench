@@ -15,5 +15,6 @@ COPY --from=builder /go/src/github.com/kkourt/kubenetbench/benchmonitor/srv/srv 
 
 RUN mkdir /scripts
 COPY /scripts/system_info.sh /scripts/
+COPY /scripts/perf* /scripts/
 
 CMD ["./monitor-srv"]

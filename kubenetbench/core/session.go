@@ -93,7 +93,7 @@ func (s *Session) writeScript(sid, sdbase string) {
 		return
 	}
 
-	log.Printf("wrote wrapper script: you can now use wrapper %s\n", fname)
+	log.Printf("================> wrote wrapper script: you may use: %s\n", fname)
 }
 
 func (s *Session) OpenLog() (*os.File, error) {

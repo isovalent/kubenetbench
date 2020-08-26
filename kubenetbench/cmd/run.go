@@ -15,6 +15,7 @@ var (
 	cliAffinity       string
 	srvAffinity       string
 	noCleanup         bool
+	collectPerf       bool
 )
 
 // add common benchmark flags
@@ -25,6 +26,7 @@ func addBenchmarkFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&noCleanup, "no-cleanup", false, "do not perform cleanup (delete created k8s resources, etc.)")
 	cmd.Flags().StringVar(&cliAffinity, "client-affinity", "none", "client affinity (none, same: same as server, different: different than server, host=XXXX)")
 	cmd.Flags().StringVar(&srvAffinity, "server-affinity", "none", "server affinity (none, host=XXXX)")
+	cmd.Flags().BoolVar(&collectPerf, "collect-perf", false, "collect performance data usning perf")
 	addNetperfFlags(cmd)
 }
 
@@ -51,7 +53,8 @@ func getRunBenchCtx(defaultRunLabel string, mkdir bool) (*core.RunBenchCtx, erro
 		cliAffinity,
 		srvAffinity,
 		!noCleanup,
-		bench)
+		bench,
+		collectPerf)
 
 	var err error = nil
 	if mkdir {

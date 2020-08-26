@@ -22,19 +22,16 @@ metadata:
   name: knb-deployment
   labels : {
     {{.runLabel}},
-    role: srv,
   }
 spec:
   replicas: 1
   selector:
     matchLabels:
       {{.runLabel}},
-      role: srv
   template:
     metadata:
       labels : {
         {{.runLabel}},
-        role: srv,
       }
     spec:
       {{.srvAffinity}}
@@ -44,14 +41,14 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: kubenetbench-{{.runID}}-service
+  name: knb-service
   labels : {
-    kubenetbench-runid: {{.runID}},
+    {{.runLabel}},
     role: srv,
   }
 spec:
   selector:
-    kubenetbench-runid: {{.runID}}
+    {{.runLabel}},
     role: srv
   ports:
     {{.srvPorts}}
@@ -133,25 +130,5 @@ func (s ServiceSt) Execute() error {
 	// attempt to save client logs
 	defer s.RunBenchCtx.KubeSaveLogs(cliSelector, fmt.Sprintf("%s/cli.log", s.RunBenchCtx.getDir()))
 
-	// sleep the duration of the benchmark plus 10s
-	time.Sleep(time.Duration(10+s.RunBenchCtx.benchmark.GetTimeout()) * time.Second)
-
-	var cliPhase string
-	for {
-		cliPhase, err = s.RunBenchCtx.KubeGetPodPhase(cliSelector)
-		if err != nil {
-			return err
-		}
-		log.Printf("client phase: %s", cliPhase)
-
-		if cliPhase == "Succeeded" {
-			return nil
-		}
-		if cliPhase == "Failed" {
-			return fmt.Errorf("client execution failed")
-		}
-		time.Sleep(10 * time.Second)
-	}
-
-	return nil
+	return s.RunBenchCtx.finalizeAndWait()
 }

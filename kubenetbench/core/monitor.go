@@ -83,32 +83,24 @@ func (s *Session) genMonitorYaml() (string, error) {
 	return yaml, nil
 }
 
-func (s *Session) GetSysInfoNode(node string) error {
-	srvAddr := fmt.Sprintf("%s:%s", node, "8451")
-	conn, err := grpc.Dial(srvAddr, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("failed to connect to monitor %s: %w", srvAddr, err)
-	}
-	defer conn.Close()
+type FileReceiver interface {
+	Recv() (*pb.File, error)
+}
 
-	fname := fmt.Sprintf("%s/%s.sysinfo", s.dir, node)
+func copyStreamToFile(fname string, stream FileReceiver) error {
+
 	f, err := os.OpenFile(fname, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	defer f.Close()
-
-	cli := pb.NewKubebenchMonitorClient(conn)
-	stream, err := cli.GetSysInfo(context.Background(), &pb.Empty{})
-
 	if err != nil {
-		return fmt.Errorf("failed to retrieve sysinfo from monitor %s: %w", srvAddr, err)
+		return err
 	}
-
+	defer f.Close()
 	for {
 		data, err := stream.Recv()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			return fmt.Errorf("failed to retrieve sysinfo from monitor %s: %w", srvAddr, err)
+			return fmt.Errorf("io error: %w", err)
 		}
 
 		_, err = f.Write(data.Data)
@@ -117,7 +109,25 @@ func (s *Session) GetSysInfoNode(node string) error {
 		}
 	}
 
-	return err
+	return nil
+}
+
+func (s *Session) GetSysInfoNode(node string) error {
+	srvAddr := fmt.Sprintf("%s:%s", node, "8451")
+	conn, err := grpc.Dial(srvAddr, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("failed to connect to monitor %s: %w", srvAddr, err)
+	}
+	defer conn.Close()
+
+	cli := pb.NewKubebenchMonitorClient(conn)
+	stream, err := cli.GetSysInfo(context.Background(), &pb.Empty{})
+	if err != nil {
+		return fmt.Errorf("failed to retrieve sysinfo from monitor %s: %w", srvAddr, err)
+	}
+
+	fname := fmt.Sprintf("%s/%s.sysinfo", s.dir, node)
+	return copyStreamToFile(fname, stream)
 }
 
 func (s *Session) GetSysInfoNodes() error {
@@ -143,6 +153,79 @@ func (s *Session) GetSysInfoNodes() error {
 
 			retries--
 			time.Sleep(4 * time.Second)
+		}
+	}
+
+	return nil
+}
+
+func (r *RunBenchCtx) endCollection() error {
+	var err error = nil
+
+	for _, node := range r.collectNodes {
+		srvAddr := fmt.Sprintf("%s:%s", node, "8451")
+		conn, err := grpc.Dial(srvAddr, grpc.WithInsecure())
+		if err != nil {
+			return fmt.Errorf("failed to connect to monitor %s: %w", srvAddr, err)
+		}
+		defer conn.Close()
+		cli := pb.NewKubebenchMonitorClient(conn)
+		conf := &pb.CollectionResultsConf{
+			CollectionId: r.runid,
+		}
+
+		stream, err := cli.GetCollectionResults(context.Background(), conf)
+		if err != nil {
+			log.Printf("collection on monitor %s failed: %s\n", node, err)
+		}
+
+		fname := fmt.Sprintf("%s/perf-%s.tar.bz2", r.getDir(), node)
+		err = copyStreamToFile(fname, stream)
+		if err != nil {
+			log.Printf("writing collection data from node %s failed: %s\n", node, err)
+		} else {
+			log.Printf("perf data for %s can be found in: %s\n", node, fname)
+		}
+	}
+
+	return err
+}
+
+func (r *RunBenchCtx) startCollection() error {
+
+	labels := [...]string{PodName, PodNodeName, PodPhase}
+	podsinfo, err := r.KubeGetPods__(labels[:])
+	if err != nil {
+		return err
+	}
+
+	nodes := make(map[string]struct{})
+	log.Printf("Pods: \n")
+	for _, a := range podsinfo {
+		log.Printf(" %v\n", a)
+		nodes[a[1]] = struct{}{}
+	}
+
+	for node, _ := range nodes {
+		srvAddr := fmt.Sprintf("%s:%s", node, "8451")
+		conn, err := grpc.Dial(srvAddr, grpc.WithInsecure())
+		if err != nil {
+			return fmt.Errorf("failed to connect to monitor %s: %w", srvAddr, err)
+		}
+		defer conn.Close()
+		//log.Printf("connected to monitor on %s\n", node)
+		cli := pb.NewKubebenchMonitorClient(conn)
+		conf := &pb.CollectionConf{
+			Duration:     "5",
+			CollectionId: r.runid,
+		}
+
+		_, err = cli.StartCollection(context.Background(), conf)
+		if err == nil {
+			log.Printf("started collection on monitor %s\n", node)
+			r.collectNodes = append(r.collectNodes, node)
+		} else {
+			log.Printf("started collection on monitor %s failed: %s\n", node, err)
 		}
 	}
 

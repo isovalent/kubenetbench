@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/kkourt/kubenetbench/utils"
@@ -34,6 +35,64 @@ func (c *RunBenchCtx) KubeGetPodIP(
 		retries--
 		time.Sleep(st)
 	}
+}
+
+var (
+	PodName     = ".metadata.name"
+	PodNodeName = ".spec.nodeName"
+	PodPhase    = ".status.phase"
+)
+
+func (c *RunBenchCtx) KubeGetPods__(fields []string) ([][]string, error) {
+
+	columns := make([]string, 0, len(fields))
+	for c_idx, c_field := range fields {
+		columns = append(columns, fmt.Sprintf("F%d:%s", c_idx, c_field))
+	}
+
+	cmd := fmt.Sprintf(
+		"kubectl get pod -l \"%s\" -o custom-columns=%s --no-headers",
+		c.getRunLabel("="),
+		strings.Join(columns, ","),
+	)
+
+	log.Printf("$ %s ", cmd)
+	lines, err := utils.ExecCmdLines(cmd)
+	ret := [][]string{}
+	if err != nil {
+		return ret, err
+	}
+
+	for _, line := range lines {
+		ret = append(ret, strings.Fields(line))
+	}
+
+	return ret, nil
+}
+
+// KubeGetPodNodes returns the pods and their nodes for the current run
+func (c *RunBenchCtx) KubeGetPodNodes() ([]string, []string, error) {
+	pods := []string{}
+	nodes := []string{}
+
+	cmd := fmt.Sprintf(
+		"kubectl get pod -l \"%s\" -o custom-columns=Name:.metadata.name,Node:.spec.nodeName --no-headers",
+		c.getRunLabel("="),
+	)
+
+	log.Printf("$ %s ", cmd)
+	lines, err := utils.ExecCmdLines(cmd)
+	if err != nil {
+		return pods, nodes, err
+	}
+
+	for _, line := range lines {
+		s := strings.Fields(line)
+		pods = append(pods, s[0])
+		nodes = append(nodes, s[1])
+	}
+
+	return pods, nodes, nil
 }
 
 // KubeGetPodPhase returns the phase of a pod

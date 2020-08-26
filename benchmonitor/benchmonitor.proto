@@ -8,10 +8,11 @@ message Empty {}
 
 message CollectionConf {
 	string duration = 1;
+	string collectionId = 2;
 }
 
-message CollectionId {
-	string id = 1;
+message CollectionResultsConf {
+	string collectionId = 1;
 }
 
 message File {
@@ -20,6 +21,6 @@ message File {
 
 service KubebenchMonitor {
 	rpc GetSysInfo(Empty) returns (stream File) {}
-	rpc StartCollection(CollectionConf) returns (CollectionId) {}
-	rpc GetCollectionResults(CollectionId) returns (stream File) {}
+	rpc StartCollection(CollectionConf) returns (Empty) {}
+	rpc GetCollectionResults(CollectionResultsConf) returns (stream File) {}
 }
