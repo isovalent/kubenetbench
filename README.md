@@ -7,9 +7,6 @@ Still under heavy development.
 
 
 ```
-go get -u github.com/spf13/cobra
-go get -u github.com/golang/protobuf/proto
-go get -u google.golang.org/grpc
 make
 ```
 
