@@ -18,14 +18,6 @@ var monitorStartCmd = &cobra.Command{
 	},
 }
 
-var monitorStatusCmd = &cobra.Command{
-	Use:   "status",
-	Short: "query monitor status",
-	Run: func(cmd *cobra.Command, args []string) {
-	},
-}
-
 func init() {
 	monitorCmd.AddCommand(monitorStartCmd)
-	monitorCmd.AddCommand(monitorStatusCmd)
 }

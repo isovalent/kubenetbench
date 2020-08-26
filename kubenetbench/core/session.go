@@ -67,8 +67,8 @@ func InitSession(
 	}
 }
 
-func (s *Session) getSessionLabel() string {
-	return fmt.Sprintf("%s=%s", sessIdLabel, s.id)
+func (s *Session) getSessionLabel(sep string) string {
+	return fmt.Sprintf("%s%s%s", sessIdLabel, sep, s.id)
 }
 
 func (s *Session) writeScript(sid, sdbase string) {
@@ -99,4 +99,13 @@ func (s *Session) writeScript(sid, sdbase string) {
 func (s *Session) OpenLog() (*os.File, error) {
 	fname := fmt.Sprintf("%s/log", s.dir)
 	return os.OpenFile(fname, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+}
+
+func (s *Session) StartMonitor() error {
+	monitorYamlFname, err := s.genMonitorYaml()
+	if err != nil {
+		return err
+	}
+
+	return s.KubeApply(monitorYamlFname)
 }

@@ -34,6 +34,16 @@ var initCmd = &cobra.Command{
 			log.Fatal(fmt.Sprintf("error initializing session: %w", err))
 		}
 		InitLog(sess)
+		log.Printf("Starting session monitor")
+		err = sess.StartMonitor()
+		if err != nil {
+			log.Fatal(fmt.Errorf("failed to start monitor: %w", err))
+		}
+
+		err = sess.GetSysInfoNodes()
+		if err != nil {
+			log.Fatal(fmt.Errorf("failed to get sysinfo via monitor: %w", err))
+		}
 	},
 }
 

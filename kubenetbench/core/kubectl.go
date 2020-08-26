@@ -8,7 +8,7 @@ import (
 	"github.com/kkourt/kubenetbench/utils"
 )
 
-// KubeGetPodIP returns the IP address of a pod using a proper selector
+// KubeGetPodIP returns the IP address of a pod using a provided selector
 func (c *RunBenchCtx) KubeGetPodIP(
 	selector string,
 	retries uint,
@@ -125,9 +125,18 @@ func (c *RunBenchCtx) KubeApply(fname string) error {
 	return utils.ExecCmd(cmd)
 }
 
+// KubeApply calls kubectl apply -f
+func (c *Session) KubeApply(fname string) error {
+	cmd := fmt.Sprintf("kubectl apply -f %s", fname)
+	log.Printf("$ %s ", cmd)
+	return utils.ExecCmd(cmd)
+}
+
 // KubeCleanup deletes pods and networkpolicies from our run
+// NB: this matches on the runid, so objectgs that have a session label and not
+// a runid label (e.g., the monitor) do not match
 func (c *RunBenchCtx) KubeCleanup() error {
-	cmd := fmt.Sprintf("kubectl delete pod,deployment,service,networkpolicy -l \"knb-runid=%s\"", c.runid)
+	cmd := fmt.Sprintf("kubectl delete pod,deployment,service,networkpolicy -l \"%s\"", c.getRunLabel("="))
 	log.Printf("$ %s ", cmd)
 
 	if c.cleanup {
@@ -138,3 +147,25 @@ func (c *RunBenchCtx) KubeCleanup() error {
 
 	return nil
 }
+
+func KubeGetNodes() ([]string, error) {
+	cmd := "kubectl get nodes -o custom-columns=Name:'.metadata.name' --no-headers"
+	lines, err := utils.ExecCmdLines(cmd)
+	if err != nil {
+		return nil, fmt.Errorf("command %s failed: %w", cmd, err)
+	}
+
+	return lines, nil
+}
+
+func KubeGetNodeIps() ([]string, error) {
+	cmd := "kubectl get nodes -o custom-columns=Addr:'.status.addresses[0].address' --no-headers"
+	lines, err := utils.ExecCmdLines(cmd)
+	if err != nil {
+		return nil, fmt.Errorf("command %s failed: %w", cmd, err)
+	}
+
+	return lines, nil
+}
+
+// kubectl get pods -l 'knb-sessid=test,role=monitor' --field-selector=spec.nodeName=k8s2 -o custom-columns=Status:'.status.phase,Port:.spec.containers[0].ports[0].hostPort,Node:.spec.nodeName'

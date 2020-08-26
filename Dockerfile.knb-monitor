@@ -1,0 +1,19 @@
+FROM golang:alpine as builder
+RUN apk add --update make git protoc
+
+RUN go get -u github.com/spf13/cobra
+RUN go get -u github.com/golang/protobuf/proto
+RUN go get -u google.golang.org/grpc
+
+ADD . /go/src/github.com/kkourt/kubenetbench
+WORKDIR /go/src/github.com/kkourt/kubenetbench
+RUN make benchmonitor/srv/srv
+
+FROM alpine
+RUN apk add --update perf
+COPY --from=builder /go/src/github.com/kkourt/kubenetbench/benchmonitor/srv/srv /monitor-srv
+
+RUN mkdir /scripts
+COPY /scripts/system_info.sh /scripts/
+
+CMD ["./monitor-srv"]

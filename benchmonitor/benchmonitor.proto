@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+option go_package = "/api";
+
+package benchmonitor;
+
+message Empty {}
+
+message CollectionConf {
+	string duration = 1;
+}
+
+message CollectionId {
+	string id = 1;
+}
+
+message File {
+	bytes data = 1;
+}
+
+service KubebenchMonitor {
+	rpc GetSysInfo(Empty) returns (stream File) {}
+	rpc StartCollection(CollectionConf) returns (CollectionId) {}
+	rpc GetCollectionResults(CollectionId) returns (stream File) {}
+}
