@@ -51,8 +51,6 @@ func affinityHost(host string, pw *utils.PrefixWriter) {
 
 func (c *RunBenchCtx) cliAffinityWrite(pw *utils.PrefixWriter, params map[string]interface{}) {
 	switch {
-	case c.cliAffinity == "none":
-		return
 	case c.cliAffinity == "same":
 		cliAffinitySame(pw)
 	case c.cliAffinity == "different":
