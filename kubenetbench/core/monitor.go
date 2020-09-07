@@ -137,6 +137,7 @@ func (s *Session) GetSysInfoNodes() error {
 		return err
 	}
 
+	errstr := ""
 	retriesOrig := 10
 	for _, node := range lines {
 		retries := retriesOrig
@@ -148,7 +149,9 @@ func (s *Session) GetSysInfoNodes() error {
 			}
 
 			if retries == 0 {
-				return fmt.Errorf("Error calling GetSysInfoNode %s after %d retries (last error:%w)", node, retriesOrig, err)
+				err := fmt.Sprintf("Error calling GetSysInfoNode %s after %d retries (last error:%w)", node, retriesOrig, err)
+				errstr = errstr + "\n" + err
+				break
 			}
 
 			retries--
@@ -156,7 +159,11 @@ func (s *Session) GetSysInfoNodes() error {
 		}
 	}
 
-	return nil
+	if len(errstr) == 0 {
+		return nil
+	} else {
+		return fmt.Errorf("GetSysInfoNodes() failed:\n%s", errstr)
+	}
 }
 
 func (r *RunBenchCtx) endCollection() error {

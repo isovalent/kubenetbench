@@ -42,7 +42,7 @@ var initCmd = &cobra.Command{
 
 		err = sess.GetSysInfoNodes()
 		if err != nil {
-			log.Fatal(fmt.Errorf("failed to get sysinfo via monitor: %w", err))
+			log.Printf("failed to get (some) sysinfo via monitor: %s", err)
 		}
 	},
 }
