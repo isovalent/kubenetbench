@@ -26,7 +26,7 @@ metadata:
     role: srv,
   }
 spec:
-  {{.srvAffinity}}
+  {{.srvSpec}}
   containers:
   - {{.srvContainer}}
 `))
@@ -36,12 +36,12 @@ func (s *Pod2PodSt) genSrvYaml() (string, error) {
 		"sessLabel":    s.RunBenchCtx.session.getSessionLabel(": "),
 		"runLabel":     s.RunBenchCtx.getRunLabel(": "),
 		"srvContainer": "{{template \"netperfContainer\"}}",
-		"srvAffinity":  "{{template \"srvAffinity\"}}",
+		"srvSpec":      "{{template \"srvSpec\"}}",
 	}
 
 	templates := map[string]utils.PrefixRenderer{
 		"netperfContainer": s.RunBenchCtx.benchmark.WriteSrvContainerYaml,
-		"srvAffinity":      s.RunBenchCtx.srvAffinityWrite,
+		"srvSpec":          s.RunBenchCtx.srvPodSpecWrite,
 	}
 
 	yaml := fmt.Sprintf("%s/netserv.yaml", s.RunBenchCtx.getDir())

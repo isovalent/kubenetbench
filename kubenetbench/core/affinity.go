@@ -50,29 +50,34 @@ func affinityHost(host string, pw *utils.PrefixWriter) {
 }
 
 func (c *RunBenchCtx) cliAffinityWrite(pw *utils.PrefixWriter, params map[string]interface{}) {
+	cliAffinity := c.cliSpec.Affinity
 	switch {
-	case c.cliAffinity == "same":
+	case cliAffinity == "none":
+		return
+	case cliAffinity == "same":
 		cliAffinitySame(pw)
-	case c.cliAffinity == "different":
+	case cliAffinity == "different":
 		cliAffinityOther(pw)
-	case strings.HasPrefix(c.cliAffinity, "host="):
-		host := strings.TrimPrefix(c.cliAffinity, "host=")
+	case strings.HasPrefix(cliAffinity, "host="):
+		host := strings.TrimPrefix(cliAffinity, "host=")
 		affinityHost(host, pw)
 
 	default:
-		panic(fmt.Sprintf("Unrecognized client affinity: %s", c.cliAffinity))
+		panic(fmt.Sprintf("Unrecognized client affinity: %s", cliAffinity))
 	}
 }
 
 func (c *RunBenchCtx) srvAffinityWrite(pw *utils.PrefixWriter, params map[string]interface{}) {
+	srvAffinity := c.srvSpec.Affinity
+
 	switch {
-	case c.srvAffinity == "none":
+	case srvAffinity == "none":
 		return
-	case strings.HasPrefix(c.srvAffinity, "host="):
-		host := strings.TrimPrefix(c.srvAffinity, "host=")
+	case strings.HasPrefix(srvAffinity, "host="):
+		host := strings.TrimPrefix(srvAffinity, "host=")
 		affinityHost(host, pw)
 
 	default:
-		panic(fmt.Sprintf("Unrecognized server affinity: %s", c.srvAffinity))
+		panic(fmt.Sprintf("Unrecognized server affinity: %s", srvAffinity))
 	}
 }
