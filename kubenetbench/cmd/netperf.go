@@ -34,6 +34,12 @@ var netperfBenchMap = map[string]func() core.Benchmark{
 		cnf.Timeout = benchmarkDuration
 		return &cnf
 	},
+
+	"tcp_maerts": func() core.Benchmark {
+		cnf := core.NetperfStreamConf{core.NetperfConfDefault("tcp_maerts", netperfArgs, netperfBenchArgs)}
+		cnf.Timeout = benchmarkDuration
+		return &cnf
+	},
 }
 
 func addNetperfFlags(cmd *cobra.Command) {
