@@ -10,23 +10,40 @@ import (
 	"github.com/kkourt/kubenetbench/utils"
 )
 
+// ContainerSpec holds configurable options for setting the container spec
+//
+// NB: for now, we just include host options.
+type ContainerSpec struct {
+	Affinity string
+
+	HostNetwork bool
+	HostIPC     bool
+	HostPID     bool
+}
+
+func (s *ContainerSpec) SetHostAll() {
+	s.HostNetwork = true
+	s.HostIPC = true
+	s.HostPID = true
+}
+
 // RunBenchCtx is the context for a benchmark run
 type RunBenchCtx struct {
-	session      *Session  // session
-	runid        string    //
-	cliAffinity  string    // client affinity
-	srvAffinity  string    // server affinity
-	cleanup      bool      // perform cleanup: remove k8s entitites (pods, policies, etc.)
-	benchmark    Benchmark // underlying benchmark interface
-	collectPerf  bool      // collect perf results
+	session      *Session       // session
+	runid        string         //
+	cliSpec      *ContainerSpec // client security context
+	srvSpec      *ContainerSpec // server security context
+	cleanup      bool           // perform cleanup: remove k8s entitites (pods, policies, etc.)
+	benchmark    Benchmark      // underlying benchmark interface
+	collectPerf  bool           // collect perf results
 	collectNodes []string
 }
 
 func NewRunBenchCtx(
 	sess *Session,
 	runLabel string,
-	cliAffinity string,
-	srvAffinity string,
+	cliSpec *ContainerSpec,
+	srvSpec *ContainerSpec,
 	cleanup bool,
 	benchmark Benchmark,
 	collectPerf bool,
@@ -36,8 +53,8 @@ func NewRunBenchCtx(
 	return &RunBenchCtx{
 		session:     sess,
 		runid:       runid,
-		cliAffinity: cliAffinity,
-		srvAffinity: srvAffinity,
+		cliSpec:     cliSpec,
+		srvSpec:     srvSpec,
 		cleanup:     cleanup,
 		benchmark:   benchmark,
 		collectPerf: collectPerf,
@@ -67,6 +84,7 @@ metadata:
   }
 spec:
   restartPolicy: Never
+  {{.cliHost}}
   {{.cliAffinity}}
   containers:
   - {{.cliContainer}}
@@ -85,11 +103,13 @@ func (r *RunBenchCtx) genCliYaml(serverIP string) (string, error) {
 		"serverIP":     serverIP,
 		"cliContainer": "{{template \"netperfContainer\"}}",
 		"cliAffinity":  "{{template \"cliAffinity\"}}",
+		"cliHost":      "{{template \"cliHost\"}}",
 	}
 
 	templates := map[string]utils.PrefixRenderer{
 		"netperfContainer": r.benchmark.WriteCliContainerYaml,
 		"cliAffinity":      r.cliAffinityWrite,
+		"cliHost":          r.cliSpec.hostOptsWrite,
 	}
 
 	utils.RenderTemplate(runctxCliTemplate, vals, templates, f)
@@ -140,4 +160,9 @@ func (r *RunBenchCtx) finalizeAndWait() error {
 	}
 
 	return err
+}
+
+func (c *RunBenchCtx) srvPodSpecWrite(pw *utils.PrefixWriter, params map[string]interface{}) {
+	c.srvAffinityWrite(pw, params)
+	c.srvSpec.hostOptsWrite(pw, params)
 }

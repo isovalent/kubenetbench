@@ -16,6 +16,8 @@ var (
 	srvAffinity       string
 	noCleanup         bool
 	collectPerf       bool
+	cliHost           bool
+	srvHost           bool
 )
 
 // add common benchmark flags
@@ -26,7 +28,9 @@ func addBenchmarkFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&noCleanup, "no-cleanup", false, "do not perform cleanup (delete created k8s resources, etc.)")
 	cmd.Flags().StringVar(&cliAffinity, "client-affinity", "different", "client affinity (different: different than server, same: same as server, host=XXXX)")
 	cmd.Flags().StringVar(&srvAffinity, "server-affinity", "none", "server affinity (none, host=XXXX)")
-	cmd.Flags().BoolVar(&collectPerf, "collect-perf", false, "collect performance data usning perf")
+	cmd.Flags().BoolVar(&collectPerf, "collect-perf", false, "collect performance data using perf")
+	cmd.Flags().BoolVar(&cliHost, "cli-on-host", false, "run client on host (enables: HostNetwork, HostIPC, HostPID)")
+	cmd.Flags().BoolVar(&srvHost, "srv-on-host", false, "run server on host (enables: HostNetwork, HostIPC, HostPID)")
 	addNetperfFlags(cmd)
 }
 
@@ -46,12 +50,23 @@ func getRunBenchCtx(defaultRunLabel string, mkdir bool) (*core.RunBenchCtx, erro
 		runLabel = defaultRunLabel
 	}
 
+	var cliSpec, srvSpec core.ContainerSpec
+
+	cliSpec.Affinity = cliAffinity
+	if cliHost {
+		cliSpec.SetHostAll()
+	}
+	srvSpec.Affinity = srvAffinity
+	if srvHost {
+		srvSpec.SetHostAll()
+	}
+
 	sess := getSession()
 	ctx := core.NewRunBenchCtx(
 		sess,
 		runLabel,
-		cliAffinity,
-		srvAffinity,
+		&cliSpec,
+		&srvSpec,
 		!noCleanup,
 		bench,
 		collectPerf)
