@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strings"
 	"text/template"
 	"time"
 
@@ -112,8 +113,8 @@ func copyStreamToFile(fname string, stream FileReceiver) error {
 	return nil
 }
 
-func (s *Session) GetSysInfoNode(node string) error {
-	srvAddr := fmt.Sprintf("%s:%s", node, "8451")
+func (s *Session) GetSysInfoNode(node_name, node_ip string) error {
+	srvAddr := fmt.Sprintf("%s:%s", node_ip, "8451")
 	conn, err := grpc.Dial(srvAddr, grpc.WithInsecure())
 	if err != nil {
 		return fmt.Errorf("failed to connect to monitor %s: %w", srvAddr, err)
@@ -126,30 +127,36 @@ func (s *Session) GetSysInfoNode(node string) error {
 		return fmt.Errorf("failed to retrieve sysinfo from monitor %s: %w", srvAddr, err)
 	}
 
-	fname := fmt.Sprintf("%s/%s.sysinfo", s.dir, node)
+	fname := fmt.Sprintf("%s/%s.sysinfo", s.dir, node_name)
 	return copyStreamToFile(fname, stream)
 }
 
 func (s *Session) GetSysInfoNodes() error {
 
-	lines, err := KubeGetNodes()
+	lines, err := KubeGetNodesAndIps()
 	if err != nil {
 		return err
 	}
 
 	errstr := ""
 	retriesOrig := 10
-	for _, node := range lines {
+	for _, line := range lines {
+		fields := strings.Fields(line)
+		if len(fields) != 2 {
+			log.Fatal("filed to parse  line %s", line);
+		}
+		node_name := fields[0]
+		node_ip := fields[1]
 		retries := retriesOrig
 		for {
-			log.Printf("calling GetSysInfoNode on %s (remaining retries: %d)", node, retries)
-			err = s.GetSysInfoNode(node)
+			log.Printf("calling GetSysInfoNode on %s/%s (remaining retries: %d)", node_name, node_ip, retries)
+			err = s.GetSysInfoNode(node_name, node_ip)
 			if err == nil {
 				break
 			}
 
 			if retries == 0 {
-				err := fmt.Sprintf("Error calling GetSysInfoNode %s after %d retries (last error:%w)", node, retriesOrig, err)
+				err := fmt.Sprintf("Error calling GetSysInfoNode %s after %d retries (last error:%w)", node_name, retriesOrig, err)
 				errstr = errstr + "\n" + err
 				break
 			}

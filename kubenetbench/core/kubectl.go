@@ -234,4 +234,14 @@ func KubeGetNodeIps() ([]string, error) {
 	return lines, nil
 }
 
+func KubeGetNodesAndIps() ([]string, error) {
+	cmd := "kubectl get nodes -o custom-columns=Name:'.metadata.name',Addr:'.status.addresses[0].address' --no-headers"
+	lines, err := utils.ExecCmdLines(cmd)
+	if err != nil {
+		return nil, fmt.Errorf("command %s failed: %w", cmd, err)
+	}
+
+	return lines, nil
+}
+
 // kubectl get pods -l 'knb-sessid=test,role=monitor' --field-selector=spec.nodeName=k8s2 -o custom-columns=Status:'.status.phase,Port:.spec.containers[0].ports[0].hostPort,Node:.spec.nodeName'
