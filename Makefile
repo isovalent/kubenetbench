@@ -1,4 +1,4 @@
-.PHONY: docker-images
+.PHONY: docker-images install
 
 all: kubenetbench/kubenetbench benchmonitor/srv/srv
 
@@ -9,6 +9,9 @@ GO ?= go
 
 kubenetbench/kubenetbench: FORCE
 	cd $(CURDIR)/kubenetbench && $(GO) build
+
+install: kubenetbench/kubenetbench
+	cd $(CURDIR)/kubenetbench && $(GO) install
 
 benchmonitor/api/benchmonitor.pb.go: benchmonitor/benchmonitor.proto
 	protoc  $< --go_out=plugins=grpc:benchmonitor
