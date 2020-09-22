@@ -29,6 +29,12 @@ var netperfBenchMap = map[string]func() core.Benchmark{
 		return &cnf
 	},
 
+	"udp_rr": func() core.Benchmark {
+		cnf := core.NetperfRRConf{core.NetperfConfDefault("udp_rr", netperfArgs, netperfBenchArgs)}
+		cnf.Timeout = benchmarkDuration
+		return &cnf
+	},
+
 	"tcp_stream": func() core.Benchmark {
 		cnf := core.NetperfStreamConf{core.NetperfConfDefault("tcp_stream", netperfArgs, netperfBenchArgs)}
 		cnf.Timeout = benchmarkDuration
@@ -37,6 +43,12 @@ var netperfBenchMap = map[string]func() core.Benchmark{
 
 	"tcp_maerts": func() core.Benchmark {
 		cnf := core.NetperfStreamConf{core.NetperfConfDefault("tcp_maerts", netperfArgs, netperfBenchArgs)}
+		cnf.Timeout = benchmarkDuration
+		return &cnf
+	},
+
+	"udp_stream": func() core.Benchmark {
+		cnf := core.NetperfStreamConf{core.NetperfConfDefault("udp_stream", netperfArgs, netperfBenchArgs)}
 		cnf.Timeout = benchmarkDuration
 		return &cnf
 	},
