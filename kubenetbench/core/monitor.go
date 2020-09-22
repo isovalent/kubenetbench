@@ -57,12 +57,13 @@ spec:
            - containerPort: 8451
              hostPort: 8451
         volumeMounts:
-        - name: tmp
-          mountPath: /tmp
+        - name: host
+          mountPath: /host
+          readOnly: true
       volumes:
-      - name: tmp
+      - name: host
         hostPath:
-          path: /tmp
+          path: /
 `))
 
 func (s *Session) genMonitorYaml() (string, error) {
@@ -143,7 +144,7 @@ func (s *Session) GetSysInfoNodes() error {
 	for _, line := range lines {
 		fields := strings.Fields(line)
 		if len(fields) != 2 {
-			log.Fatal("filed to parse  line %s", line);
+			log.Fatal("filed to parse  line %s", line)
 		}
 		node_name := fields[0]
 		node_ip := fields[1]
