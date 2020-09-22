@@ -197,6 +197,11 @@ func (cnf *NetperfStreamConf) WriteCliContainerYaml(pw *utils.PrefixWriter, para
 		"REMOTE_RECV_CALLS",
 		"REMOTE_BYTES_PER_RECV",
 		//
+		"LOCAL_SEND_THROUGHPUT",
+		"LOCAL_RECV_THROUGHPUT",
+		"REMOTE_SEND_THROUGHPUT",
+		"REMOTE_RECV_THROUGHPUT",
+		//
 		"LOCAL_SYSNAME",
 		"LOCAL_RELEASE",
 		"LOCAL_VERSION",
