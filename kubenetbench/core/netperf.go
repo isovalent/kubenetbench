@@ -235,6 +235,13 @@ func (cnf *NetperfStreamConf) WriteCliContainerYaml(pw *utils.PrefixWriter, para
 	// -D seems to kill the performance for high queue depths, so don't use it
 	// pw.AppendNewLineOrDie(`"-D",# no delay`)
 	pw.AppendNewLineOrDie(fmt.Sprintf(`"-k", "%s",`, strings.Join(outputFields, ",")))
+
+	// netperf seems to be setting SO_DONTROUTE for udp_stream, which might
+	// not work in many setups. -R 1 disables this.
+	if cnf.TestName == "udp_stream" {
+		pw.AppendNewLineOrDie(`"-R", "1"`)
+	}
+
 	if len(cnf.MoreBenchArgs) > 0 {
 		pw.AppendNewLineOrDie("# Additional test-specific args")
 		for _, arg := range cnf.MoreBenchArgs {
