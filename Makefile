@@ -2,8 +2,7 @@
 
 all: kubenetbench/kubenetbench benchmonitor/srv/srv
 
-DOCKER_USER ?= kkourt
-REPO=github.com/kkourt/kubenetbench
+DOCKER_USER ?= cilium
 
 GO ?= go
 

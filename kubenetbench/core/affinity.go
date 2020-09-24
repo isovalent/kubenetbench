@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/kkourt/kubenetbench/utils"
+	"github.com/cilium/kubenetbench/utils"
 )
 
 // client on the same node as the server

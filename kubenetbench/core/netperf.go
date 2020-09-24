@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/kkourt/kubenetbench/utils"
+	"github.com/cilium/kubenetbench/utils"
 )
 
 // NetperfConf base netperf configuration
@@ -37,7 +37,7 @@ func (cnf *NetperfConf) GetTimeout() int {
 // WriteSrvContainerYaml writes the server yaml
 func (cnf *NetperfConf) WriteSrvContainerYaml(pw *utils.PrefixWriter, params map[string]interface{}) {
 	pw.AppendNewLineOrDie(`name: netperf-srv`)
-	pw.AppendNewLineOrDie(`image: kkourt/kubenetbench`)
+	pw.AppendNewLineOrDie(`image: cilium/kubenetbench`)
 	pw.AppendNewLineOrDie(`command: ["netserver"]`)
 	pw.AppendNewLineOrDie(`args : [`)
 	pw.PushPrefix("    ")
@@ -133,7 +133,7 @@ func (cnf *NetperfRRConf) WriteCliContainerYaml(pw *utils.PrefixWriter, params m
 	)
 
 	pw.AppendNewLineOrDie(`name: netperf-cli`)
-	pw.AppendNewLineOrDie(`image: kkourt/kubenetbench`)
+	pw.AppendNewLineOrDie(`image: cilium/kubenetbench`)
 	pw.AppendNewLineOrDie(fmt.Sprintf(`command: ["%s"]`, cnf.CliCommand))
 	pw.AppendNewLineOrDie(`args : [`)
 	pw.PushPrefix("    ")
@@ -219,7 +219,7 @@ func (cnf *NetperfStreamConf) WriteCliContainerYaml(pw *utils.PrefixWriter, para
 		"REMOTE_TRANSPORT_RETRANS",
 	}
 	pw.AppendNewLineOrDie(`name: netperf-cli`)
-	pw.AppendNewLineOrDie(`image: kkourt/kubenetbench`)
+	pw.AppendNewLineOrDie(`image: cilium/kubenetbench`)
 	pw.AppendNewLineOrDie(fmt.Sprintf(`command: ["%s"]`, cnf.CliCommand))
 	pw.AppendNewLineOrDie(`args : [`)
 	pw.PushPrefix("    ")

@@ -13,7 +13,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	pb "github.com/kkourt/kubenetbench/benchmonitor/api"
+	pb "github.com/cilium/kubenetbench/benchmonitor/api"
 )
 
 var (

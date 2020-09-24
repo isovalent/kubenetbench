@@ -12,7 +12,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	pb "github.com/kkourt/kubenetbench/benchmonitor/api"
+	pb "github.com/cilium/kubenetbench/benchmonitor/api"
 )
 
 var monitorTemplate = template.Must(template.New("monitor").Parse(`apiVersion: apps/v1
@@ -46,7 +46,7 @@ spec:
 
       containers:
       - name: kubenetbench-monitor
-        image: docker.io/kkourt/kubenetbench-monitor
+        image: docker.io/cilium/kubenetbench-monitor
         securityContext:
            privileged: true
            capabilities:

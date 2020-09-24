@@ -7,7 +7,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/kkourt/kubenetbench/utils"
+	"github.com/cilium/kubenetbench/utils"
 )
 
 // Pod2PodSt is the necessary state for executing an pod-to-pod benchmark

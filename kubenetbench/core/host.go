@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/kkourt/kubenetbench/utils"
+	"github.com/cilium/kubenetbench/utils"
 )
 
 func (s *ContainerSpec) hostOptsWrite(pw *utils.PrefixWriter, params map[string]interface{}) {

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kkourt/kubenetbench/utils"
+	"github.com/cilium/kubenetbench/utils"
 )
 
 // KubeGetPodIP returns the IP address of a pod using a provided selector

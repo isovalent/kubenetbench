@@ -7,7 +7,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/kkourt/kubenetbench/utils"
+	"github.com/cilium/kubenetbench/utils"
 )
 
 // ServiceSt is the state for the service run

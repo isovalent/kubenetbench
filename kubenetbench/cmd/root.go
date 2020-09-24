@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/kkourt/kubenetbench/kubenetbench/core"
+	"github.com/cilium/kubenetbench/kubenetbench/core"
 )
 
 var (

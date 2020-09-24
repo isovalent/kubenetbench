@@ -7,7 +7,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/kkourt/kubenetbench/utils"
+	"github.com/cilium/kubenetbench/utils"
 )
 
 // ContainerSpec holds configurable options for setting the container spec

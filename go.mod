@@ -1,4 +1,4 @@
-module github.com/kkourt/kubenetbench
+module github.com/cilium/kubenetbench
 
 go 1.14
 
