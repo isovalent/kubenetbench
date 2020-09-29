@@ -13,6 +13,7 @@ type NetperfConf struct {
 	DataPort      uint16
 	TestName      string
 	CliCommand    string
+	PreArgs       []string
 	MoreArgs      []string
 	MoreBenchArgs []string
 }
@@ -137,6 +138,12 @@ func (cnf *NetperfRRConf) WriteCliContainerYaml(pw *utils.PrefixWriter, params m
 	pw.AppendNewLineOrDie(fmt.Sprintf(`command: ["%s"]`, cnf.CliCommand))
 	pw.AppendNewLineOrDie(`args : [`)
 	pw.PushPrefix("    ")
+	if len(cnf.PreArgs) > 0 {
+		pw.AppendNewLineOrDie("# initial args")
+		for _, arg := range cnf.PreArgs {
+			pw.AppendNewLineOrDie(fmt.Sprintf(`"%s",`, arg))
+		}
+	}
 	pw.AppendNewLineOrDie(fmt.Sprintf(`"-l", "%d", # timeout`, cnf.Timeout))
 	pw.AppendNewLineOrDie(`"-j", # enable additional statistics`)
 	pw.AppendNewLineOrDie(fmt.Sprintf(`"-H", "%v",`, serverIP))
@@ -223,6 +230,12 @@ func (cnf *NetperfStreamConf) WriteCliContainerYaml(pw *utils.PrefixWriter, para
 	pw.AppendNewLineOrDie(fmt.Sprintf(`command: ["%s"]`, cnf.CliCommand))
 	pw.AppendNewLineOrDie(`args : [`)
 	pw.PushPrefix("    ")
+	if len(cnf.PreArgs) > 0 {
+		pw.AppendNewLineOrDie("# initial args")
+		for _, arg := range cnf.PreArgs {
+			pw.AppendNewLineOrDie(fmt.Sprintf(`"%s",`, arg))
+		}
+	}
 	pw.AppendNewLineOrDie(fmt.Sprintf(`"-l", "%d", # timeout`, cnf.Timeout))
 	pw.AppendNewLineOrDie(`"-j", # enable additional statistics`)
 	pw.AppendNewLineOrDie(fmt.Sprintf(`"-H", "%v",`, serverIP))
