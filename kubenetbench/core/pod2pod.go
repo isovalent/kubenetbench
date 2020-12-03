@@ -126,7 +126,7 @@ func (s Pod2PodSt) Execute() error {
 
 	// get server pod IP
 	time.Sleep(2 * time.Second)
-	srvIP, err := s.RunBenchCtx.KubeGetPodIP(srvSelector, 10, 2*time.Second)
+	srvIP, err := s.RunBenchCtx.KubeGetPodIP(srvSelector, 30, 2*time.Second)
 	if err != nil {
 		return err
 	}
