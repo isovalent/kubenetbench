@@ -13,9 +13,10 @@ import (
 )
 
 var (
-	quiet       bool
-	sessID      string
-	sessDirBase string
+	quiet           bool
+	sessID          string
+	sessDirBase     string
+	sessPortForward bool
 )
 
 // var noCleanup bool
@@ -29,7 +30,7 @@ var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "initalize a seasson",
 	Run: func(cmd *cobra.Command, args []string) {
-		sess, err := core.InitSession(sessID, sessDirBase)
+		sess, err := core.InitSession(sessID, sessDirBase, sessPortForward)
 		if err != nil {
 			log.Fatal(fmt.Sprintf("error initializing session: %w", err))
 		}
@@ -65,6 +66,7 @@ func init() {
 	rootCmd.MarkPersistentFlagRequired("session-id")
 	rootCmd.PersistentFlags().StringVarP(&sessDirBase, "session-base-dir", "d", ".", "base directory to store session data")
 	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "quiet output")
+	rootCmd.PersistentFlags().BoolVarP(&sessPortForward, "port-forward", "", false, "use port-forward to connect to monitor")
 
 	// session commands
 	rootCmd.AddCommand(initCmd)
@@ -77,7 +79,7 @@ func init() {
 
 // return a session based on the given flags
 func getSession() *core.Session {
-	sess, err := core.NewSession(sessID, sessDirBase)
+	sess, err := core.NewSession(sessID, sessDirBase, sessPortForward)
 	if err != nil {
 		log.Fatal(fmt.Errorf("error creating session: %w", err))
 	}

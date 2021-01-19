@@ -9,19 +9,22 @@ import (
 
 // SessionCtx is the context for a session run
 type Session struct {
-	id  string // id identifies the run
-	dir string // directory to store results/etc.
+	id          string // id identifies the run
+	dir         string // directory to store results/etc.
+	portForward bool   // use kubectl port-forward to connect to the monitor
 }
 
 // NewRunCtx creates a new RunCtx
 func NewSession(
 	sessId string,
 	sessDirBase string,
+	sessPortForward bool,
 ) (*Session, error) {
 
 	sess := &Session{
-		id:  sessId,
-		dir: fmt.Sprintf("%s/%s", sessDirBase, sessId),
+		id:          sessId,
+		dir:         fmt.Sprintf("%s/%s", sessDirBase, sessId),
+		portForward: sessPortForward,
 	}
 
 	info, err_stat := os.Stat(sess.dir)
@@ -44,11 +47,13 @@ func NewSession(
 func InitSession(
 	sessId string,
 	sessDirBase string,
+	sessPortForward bool,
 ) (*Session, error) {
 
 	sess := &Session{
-		id:  sessId,
-		dir: fmt.Sprintf("%s/%s", sessDirBase, sessId),
+		id:          sessId,
+		dir:         fmt.Sprintf("%s/%s", sessDirBase, sessId),
+		portForward: sessPortForward,
 	}
 
 	info, err_stat := os.Stat(sess.dir)
@@ -86,7 +91,7 @@ func (s *Session) writeScript(sid, sdbase string) {
 
 	fmt.Fprintln(f, "#!/bin/sh")
 	fmt.Fprintln(f, "# wrapper script for kubenetbench")
-	fmt.Fprintf(f, "%s --session-id %s --session-base-dir %s \"$@\"\n", prog, sid, sdbase)
+	fmt.Fprintf(f, "%s --session-id=%s --session-base-dir=%s --port-forward=%t \"$@\"\n", prog, sid, sdbase, s.portForward)
 
 	err = os.Chmod(fname, 0755)
 	if err != nil {
