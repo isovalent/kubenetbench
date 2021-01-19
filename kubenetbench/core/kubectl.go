@@ -1,13 +1,19 @@
 package core
 
 import (
+	"bufio"
+	"context"
 	"fmt"
 	"log"
+	"os/exec"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/cilium/kubenetbench/utils"
 )
+
+var portForwardRegEx = regexp.MustCompile(`:(\d+) -> \d+`)
 
 // KubeGetPodIP returns the IP address of a pod using a provided selector
 func (c *RunBenchCtx) KubeGetPodIP(
@@ -207,6 +213,22 @@ func (c *RunBenchCtx) KubeCleanup() error {
 	return nil
 }
 
+func (s *Session) KubeGetPodForNode(node string, podLabels ...string) (string, error) {
+	labels := strings.Join(append(podLabels, s.getSessionLabel("=")), ",")
+	cmd := fmt.Sprintf(`kubectl get pods -l "%s" --field-selector=spec.nodeName="%s" -o custom-columns=Name:'.metadata.name' --no-headers`, labels, node)
+	log.Printf("$ %s ", cmd)
+	lines, err := utils.ExecCmdLines(cmd)
+	if err != nil {
+		return "", fmt.Errorf("command %q failed: %w", cmd, err)
+	}
+
+	if len(lines) == 0 {
+		return "", fmt.Errorf("missing output for command %q", cmd)
+	}
+
+	return lines[0], nil
+}
+
 // deletes the monitor
 func (s *Session) KubeCleanup() error {
 	cmd := fmt.Sprintf("kubectl delete daemonset -l \"%s\"", s.getSessionLabel("="))
@@ -234,6 +256,20 @@ func KubeGetNodeIps() ([]string, error) {
 	return lines, nil
 }
 
+func KubeGetNodeIP(nodeName string) (string, error) {
+	cmd := fmt.Sprintf("kubectl get node -o custom-columns=Addr:'.status.addresses[0].address' --no-headers %q", nodeName)
+	lines, err := utils.ExecCmdLines(cmd)
+	if err != nil {
+		return "", fmt.Errorf("command %q failed: %w", cmd, err)
+	}
+
+	if len(lines) == 0 {
+		return "", fmt.Errorf("missing node address in command %q", cmd)
+	}
+
+	return lines[0], nil
+}
+
 func KubeGetNodesAndIps() ([]string, error) {
 	cmd := "kubectl get nodes -o custom-columns=Name:'.metadata.name',Addr:'.status.addresses[0].address' --no-headers"
 	lines, err := utils.ExecCmdLines(cmd)
@@ -242,6 +278,45 @@ func KubeGetNodesAndIps() ([]string, error) {
 	}
 
 	return lines, nil
+}
+
+func KubePortForward(ctx context.Context, target string, targetPort string) (localPort string, err error) {
+	args := fmt.Sprintf("kubectl port-forward %s :%s", target, targetPort)
+	log.Printf("$ %s ", args)
+
+	ctx, cancel := context.WithCancel(ctx)
+	cmd := exec.CommandContext(ctx, "sh", "-c", args)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return "", fmt.Errorf("failed to obtain stdout for %q: %w", args, err)
+	}
+
+	localPortChan := make(chan string, 1)
+	go func() {
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			m := portForwardRegEx.FindStringSubmatch(scanner.Text())
+			if len(m) > 1 {
+				localPortChan <- m[1]
+				break
+			}
+		}
+		// reap child
+		_ = cmd.Wait()
+	}()
+
+	if err := cmd.Start(); err != nil {
+		return "", fmt.Errorf("failed to start %q: %w", args, err)
+	}
+
+	select {
+	case <-time.After(10 * time.Second):
+		cancel()
+		return "", fmt.Errorf("timed out waiting for port-forward on %s:%s", target, targetPort)
+	case port := <-localPortChan:
+		return port, nil
+	}
+
 }
 
 // kubectl get pods -l 'knb-sessid=test,role=monitor' --field-selector=spec.nodeName=k8s2 -o custom-columns=Status:'.status.phase,Port:.spec.containers[0].ports[0].hostPort,Node:.spec.nodeName'

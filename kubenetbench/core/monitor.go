@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"os"
 	"strings"
 	"text/template"
@@ -13,6 +14,11 @@ import (
 	"google.golang.org/grpc"
 
 	pb "github.com/cilium/kubenetbench/benchmonitor/api"
+)
+
+const (
+	monitorPort     = "8451"
+	monitorSelector = "role=monitor"
 )
 
 var monitorTemplate = template.Must(template.New("monitor").Parse(`apiVersion: apps/v1
@@ -114,18 +120,61 @@ func copyStreamToFile(fname string, stream FileReceiver) error {
 	return nil
 }
 
-func (s *Session) GetSysInfoNode(node_name, node_ip string) error {
-	srvAddr := fmt.Sprintf("%s:%s", node_ip, "8451")
+func (s *Session) srvAddrForNode(ctx context.Context, nodeName string) (string, error) {
+	var host, port string
+	if !s.portForward {
+		// directly connect to node IP if port-forwarding is disabled
+		nodeIP, err := KubeGetNodeIP(nodeName)
+		if err != nil {
+			return "", err
+		}
+		host = nodeIP
+		port = monitorPort
+	} else {
+		monitorPod, err := s.KubeGetPodForNode(nodeName, monitorSelector)
+		if err != nil {
+			return "", err
+		}
+
+		port, err = KubePortForward(ctx, monitorPod, monitorPort)
+		if err != nil {
+			return "", err
+		}
+
+		host = "localhost"
+	}
+
+	return net.JoinHostPort(host, port), nil
+}
+
+func (s *Session) DialMonitor(ctx context.Context, nodeName string) (*grpc.ClientConn, error) {
+	srvAddr, err := s.srvAddrForNode(ctx, nodeName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to obtain monitor address of node %s: %w", nodeName, err)
+	}
+
 	conn, err := grpc.Dial(srvAddr, grpc.WithInsecure())
 	if err != nil {
-		return fmt.Errorf("failed to connect to monitor %s: %w", srvAddr, err)
+		return nil, fmt.Errorf("failed to connect to monitor %s: %w", srvAddr, err)
+	}
+
+	return conn, err
+}
+
+func (s *Session) GetSysInfoNode(node_name, node_ip string) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	conn, err := s.DialMonitor(ctx, node_name)
+	if err != nil {
+		return err
 	}
 	defer conn.Close()
 
 	cli := pb.NewKubebenchMonitorClient(conn)
-	stream, err := cli.GetSysInfo(context.Background(), &pb.Empty{})
+	stream, err := cli.GetSysInfo(ctx, &pb.Empty{})
 	if err != nil {
-		return fmt.Errorf("failed to retrieve sysinfo from monitor %s: %w", srvAddr, err)
+		return fmt.Errorf("failed to retrieve sysinfo from monitor on %q: %w", node_name, err)
 	}
 
 	fname := fmt.Sprintf("%s/%s.sysinfo", s.dir, node_name)
@@ -175,13 +224,15 @@ func (s *Session) GetSysInfoNodes() error {
 }
 
 func (r *RunBenchCtx) endCollection() error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	var err error = nil
 
 	for _, node := range r.collectNodes {
-		srvAddr := fmt.Sprintf("%s:%s", node, "8451")
-		conn, err := grpc.Dial(srvAddr, grpc.WithInsecure())
+		conn, err := r.session.DialMonitor(ctx, node)
 		if err != nil {
-			return fmt.Errorf("failed to connect to monitor %s: %w", srvAddr, err)
+			return err
 		}
 		defer conn.Close()
 		cli := pb.NewKubebenchMonitorClient(conn)
@@ -189,7 +240,7 @@ func (r *RunBenchCtx) endCollection() error {
 			CollectionId: r.runid,
 		}
 
-		stream, err := cli.GetCollectionResults(context.Background(), conf)
+		stream, err := cli.GetCollectionResults(ctx, conf)
 		if err != nil {
 			log.Printf("collection on monitor %s failed: %s\n", node, err)
 		}
@@ -207,6 +258,8 @@ func (r *RunBenchCtx) endCollection() error {
 }
 
 func (r *RunBenchCtx) startCollection() error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	labels := [...]string{PodName, PodNodeName, PodPhase}
 	podsinfo, err := r.KubeGetPods__(labels[:])
@@ -222,10 +275,9 @@ func (r *RunBenchCtx) startCollection() error {
 	}
 
 	for node, _ := range nodes {
-		srvAddr := fmt.Sprintf("%s:%s", node, "8451")
-		conn, err := grpc.Dial(srvAddr, grpc.WithInsecure())
+		conn, err := r.session.DialMonitor(ctx, node)
 		if err != nil {
-			return fmt.Errorf("failed to connect to monitor %s: %w", srvAddr, err)
+			return err
 		}
 		defer conn.Close()
 		//log.Printf("connected to monitor on %s\n", node)
